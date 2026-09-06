@@ -1,0 +1,13 @@
+# Preserve the standard Windows Gradle wrapper line endings without treating
+# their CRLF characters as whitespace errors in repository checks.
+*.bat text eol=crlf whitespace=-trailing-space
+
+# Normalize source and documentation files across platforms.
+*.dart text
+*.yaml text
+*.yml text
+*.md text
+*.json text
+*.xml text
+*.plist text
+*.rules text

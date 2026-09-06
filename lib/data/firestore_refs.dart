@@ -1,0 +1,51 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Centralised Firestore collection and document paths (spec Table 11).
+///
+/// Structure:
+///   users/{uid}
+///   assessments/{assessmentId}
+///     assessments/{assessmentId}/lesions/{lesionId}
+///     assessments/{assessmentId}/clinical/current
+///     assessments/{assessmentId}/outcome/current
+///
+/// The self-examination is 1:1 with an assessment, so it is stored inline on
+/// the assessment document rather than as its own collection.
+class FirestoreRefs {
+  FirestoreRefs._();
+
+  static FirebaseFirestore get db => FirebaseFirestore.instance;
+
+  static const String usersCollection = 'users';
+  static const String assessmentsCollection = 'assessments';
+  static const String lesionsCollection = 'lesions';
+  static const String clinicalCollection = 'clinical';
+  static const String outcomeCollection = 'outcome';
+
+  /// Single fixed id for the 1:1 clinical and outcome sub-documents.
+  static const String singletonDoc = 'current';
+
+  /// Field name for the inline self-examination.
+  static const String selfExamField = 'self_exam';
+
+  static CollectionReference<Map<String, dynamic>> users() =>
+      db.collection(usersCollection);
+
+  static DocumentReference<Map<String, dynamic>> user(String uid) =>
+      users().doc(uid);
+
+  static CollectionReference<Map<String, dynamic>> assessments() =>
+      db.collection(assessmentsCollection);
+
+  static DocumentReference<Map<String, dynamic>> assessment(int id) =>
+      assessments().doc(id.toString());
+
+  static CollectionReference<Map<String, dynamic>> lesions(int assessmentId) =>
+      assessment(assessmentId).collection(lesionsCollection);
+
+  static DocumentReference<Map<String, dynamic>> clinical(int assessmentId) =>
+      assessment(assessmentId).collection(clinicalCollection).doc(singletonDoc);
+
+  static DocumentReference<Map<String, dynamic>> outcome(int assessmentId) =>
+      assessment(assessmentId).collection(outcomeCollection).doc(singletonDoc);
+}

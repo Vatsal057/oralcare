@@ -1,0 +1,13 @@
+# Android build and local-machine files
+/.gradle
+/captures/
+/local.properties
+.cxx/
+
+# Generated Flutter bridge source
+GeneratedPluginRegistrant.java
+
+# Never commit signing material.
+key.properties
+**/*.keystore
+**/*.jks

@@ -1,0 +1,108 @@
+rules_version = '2';
+
+// Security rules for the Oral Cancer pilot (spec Table 1 consent gate and
+// section 7 separation of interfaces).
+//
+// Model:
+//   users/{uid}                         profile + role + consent
+//   assessments/{id}                    owned by a patient (owner_uid)
+//     assessments/{id}/lesions/{lid}
+//     assessments/{id}/clinical/current  written by doctors
+//     assessments/{id}/outcome/current   written by doctors
+//
+// KNOWN PILOT LIMITATION: the doctor role is a field on the user's own profile
+// document, written by the client after an enrolment-code check in the app. A
+// determined user could self-assign the doctor role and read records that
+// patients have consented to share. Before any real deployment, the doctor role
+// must be a server-set custom claim (request.auth.token.role == 'doctor'),
+// verified against a professional register, and isDoctor() below must switch to
+// that claim.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isDoctor() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && myProfile().role == 'doctor';
+    }
+
+    // ---- users ------------------------------------------------------------
+    match /users/{uid} {
+      // A user reads and writes only their own profile. Doctors may read any
+      // profile so the queue can show patient age/sex and re-check consent.
+      allow read: if isSignedIn() && (request.auth.uid == uid || isDoctor());
+
+      // The uid in the document path must match the signed-in user, so nobody
+      // can create or overwrite another person's profile.
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // ---- assessments ------------------------------------------------------
+    match /assessments/{assessmentId} {
+      function isOwner() {
+        return isSignedIn() && resource.data.owner_uid == request.auth.uid;
+      }
+      function isSharedWithDoctors() {
+        return resource.data.shared_with_doctor == 1;
+      }
+
+      // The patient owns their assessment. A doctor may read it only when it is
+      // shared. (Live consent is also re-checked in the app against the user
+      // profile.)
+      allow read: if isOwner() || (isDoctor() && isSharedWithDoctors());
+
+      // Only the owning patient creates or edits an assessment, and the
+      // owner_uid must be their own uid.
+      allow create: if isSignedIn()
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update: if isOwner()
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow delete: if isOwner();
+
+      // lesions inherit the parent's access model.
+      match /lesions/{lesionId} {
+        function parent() {
+          return get(/databases/$(database)/documents/assessments/$(assessmentId)).data;
+        }
+        allow read: if (isSignedIn() && parent().owner_uid == request.auth.uid)
+          || (isDoctor() && parent().shared_with_doctor == 1);
+        allow create, update, delete: if isSignedIn()
+          && parent().owner_uid == request.auth.uid;
+      }
+
+      // Clinical assessment and outcome are written by doctors and read by the
+      // owning patient (to see referral/follow-up) or any doctor.
+      match /clinical/{docId} {
+        function parent() {
+          return get(/databases/$(database)/documents/assessments/$(assessmentId)).data;
+        }
+        allow read: if (isSignedIn() && parent().owner_uid == request.auth.uid)
+          || isDoctor();
+        allow write: if isDoctor();
+      }
+
+      match /outcome/{docId} {
+        function parent() {
+          return get(/databases/$(database)/documents/assessments/$(assessmentId)).data;
+        }
+        allow read: if (isSignedIn() && parent().owner_uid == request.auth.uid)
+          || isDoctor();
+        allow write: if isDoctor();
+      }
+    }
+
+    // Everything else is denied by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
