@@ -27,15 +27,14 @@ class AuthRepository {
   /// mailbox; it only has to be a syntactically valid, consistent domain.
   static const String _emailDomain = 'oralpilot.app';
 
-  /// Enrolment code required to create a Doctor account.
+  /// Custom-claim key and value that grant clinician access.
   ///
-  /// PILOT ONLY. This is checked on the client, so a determined user could
-  /// bypass it and self-assign the doctor role. Before deployment, doctor
-  /// accounts must be provisioned server-side (e.g. a Cloud Function that sets
-  /// a custom claim after verifying a real professional register), and the
-  /// security rules must key doctor access off that claim rather than a
-  /// client-written field.
-  static const String doctorEnrolmentCode = 'ORAL-PILOT-2026';
+  /// The claim is set only by `tools/grant_doctor.mjs` using Admin SDK
+  /// credentials, and the Firestore rules authorise clinician reads on the claim
+  /// alone. The app therefore cannot create a doctor account, and a user cannot
+  /// promote themselves.
+  static const String _roleClaim = 'role';
+  static const String _doctorClaimValue = 'doctor';
 
   String _emailForUsername(String username) =>
       '${username.trim().toLowerCase()}@$_emailDomain';
@@ -58,12 +57,6 @@ class AuthRepository {
     final uid = credential.user!.uid;
 
     final patientId = patientIdOverride ?? _derivePatientId(uid);
-    if (patientIdOverride != null &&
-        await _patientIdTaken(patientIdOverride, uid)) {
-      // Roll back the auth user so a failed registration leaves nothing behind.
-      await credential.user?.delete();
-      throw const AuthException('That Patient ID is already registered.');
-    }
 
     final user = AppUser(
       uid: uid,
@@ -76,38 +69,62 @@ class AuthRepository {
       createdAt: DateTime.now(),
     );
 
-    await FirestoreRefs.user(uid).set(user.toFirestore());
+    // Reserve the Patient_ID first. The rules only allow creating a reservation
+    // that does not already exist, so this both proves uniqueness and claims
+    // the id in one write, without reading anyone else's profile.
+    await _runOrRollBack(credential, () async {
+      try {
+        await FirestoreRefs.patientIdReservation(patientId).set({
+          'owner_uid': uid,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied' && patientIdOverride != null) {
+          throw const AuthException('That Patient ID is already registered.');
+        }
+        rethrow;
+      }
+
+      await FirestoreRefs.user(uid).set(user.toFirestore());
+    });
+
     return user;
   }
 
-  Future<AppUser> registerDoctor({
-    required String username,
-    required String password,
-    required String enrolmentCode,
-    String? fullName,
-  }) async {
-    _validateCredentials(username, password);
-
-    if (enrolmentCode.trim() != doctorEnrolmentCode) {
-      throw const AuthException(
-        'That clinic enrolment code is not valid. Contact the pilot '
-        'coordinator to obtain one.',
-      );
+  /// Runs post-sign-up work, deleting the new auth user if it fails.
+  ///
+  /// Without this, a failed profile write leaves an account that can neither
+  /// sign in (no profile) nor be registered again (username taken).
+  Future<void> _runOrRollBack(
+    UserCredential credential,
+    Future<void> Function() work,
+  ) async {
+    try {
+      await work();
+    } catch (_) {
+      try {
+        await credential.user?.delete();
+      } catch (_) {
+        // Ignore cleanup failures; the original error is the useful one.
+      }
+      rethrow;
     }
+  }
 
-    final credential = await _createAuthUser(username, password);
-    final uid = credential.user!.uid;
-
-    final user = AppUser(
-      uid: uid,
-      username: username.trim(),
-      role: UserRole.doctor,
-      fullName: fullName?.trim(),
-      createdAt: DateTime.now(),
-    );
-
-    await FirestoreRefs.user(uid).set(user.toFirestore());
-    return user;
+  /// True when the signed-in account carries the server-set clinician claim.
+  ///
+  /// [forceRefresh] fetches a new ID token, which is required immediately after
+  /// provisioning because the claim is embedded in the token.
+  Future<bool> hasDoctorClaim({bool forceRefresh = false}) async {
+    final current = _auth.currentUser;
+    if (current == null) return false;
+    try {
+      final token = await current.getIdTokenResult(forceRefresh);
+      return token.claims?[_roleClaim] == _doctorClaimValue;
+    } catch (_) {
+      // Fail closed: without a verifiable token, treat access as not granted.
+      return false;
+    }
   }
 
   /// Signs in and enforces that the account matches the interface the user
@@ -152,6 +169,18 @@ class AuthRepository {
       );
     }
 
+    if (expectedRole == UserRole.doctor &&
+        !await hasDoctorClaim(forceRefresh: true)) {
+      // The profile says doctor but the server has not granted the claim, so
+      // every clinician read would be denied. Refuse the session outright
+      // instead of opening an interface that cannot load anything.
+      await _auth.signOut();
+      throw const AuthException(
+        'This account is not approved for clinician access. The pilot '
+        'coordinator must provision it before you can sign in.',
+      );
+    }
+
     return user;
   }
 
@@ -172,6 +201,8 @@ class AuthRepository {
     return AppUser.fromFirestore(uid, data);
   }
 
+  /// Doctor-only lookup: querying the `users` collection is permitted by the
+  /// rules for the doctor role, not for patients.
   Future<AppUser?> findByPatientId(String patientId) async {
     final query = await FirestoreRefs.users()
         .where('patient_id', isEqualTo: patientId)
@@ -199,6 +230,13 @@ class AuthRepository {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        // An earlier registration may have created the credential but failed
+        // before writing the profile. Adopt that account when the same person
+        // supplies the correct password, so the username is not stranded.
+        final adopted = await _adoptProfilelessAccount(username, password);
+        if (adopted != null) return adopted;
+      }
       throw AuthException(switch (e.code) {
         'email-already-in-use' => 'That username is already taken.',
         'weak-password' => 'That password is too weak.',
@@ -244,9 +282,24 @@ class AuthRepository {
     return trimmed;
   }
 
-  Future<bool> _patientIdTaken(String patientId, String selfUid) async {
-    final existing = await findByPatientId(patientId);
-    return existing != null && existing.uid != selfUid;
+  /// Returns the credential for an existing account that has no profile
+  /// document, or null when the account is genuinely in use.
+  Future<UserCredential?> _adoptProfilelessAccount(
+    String username,
+    String password,
+  ) async {
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: _emailForUsername(username),
+        password: password,
+      );
+      if (await findByUid(credential.user!.uid) == null) return credential;
+      await _auth.signOut();
+    } catch (_) {
+      // Wrong password, or the profile could not be read: treat the username as
+      // taken rather than leaking whether the account exists.
+    }
+    return null;
   }
 
   /// A readable, unique Patient_ID derived from the uid, e.g. OC-2026-4F9A2C.

@@ -26,7 +26,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _fullName = TextEditingController();
   final _patientId = TextEditingController();
   final _age = TextEditingController();
-  final _enrolmentCode = TextEditingController();
 
   String? _sex;
   bool _busy = false;
@@ -49,7 +48,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _fullName.dispose();
     _patientId.dispose();
     _age.dispose();
-    _enrolmentCode.dispose();
     super.dispose();
   }
 
@@ -64,21 +62,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final session = context.read<SessionController>();
 
     try {
-      final user = _isDoctor
-          ? await session.auth.registerDoctor(
-              username: _username.text,
-              password: _password.text,
-              enrolmentCode: _enrolmentCode.text,
-              fullName: _fullName.text,
-            )
-          : await session.auth.registerPatient(
-              username: _username.text,
-              password: _password.text,
-              preferredPatientId: _patientId.text,
-              fullName: _fullName.text,
-              age: int.parse(_age.text.trim()),
-              sex: _sex,
-            );
+      final user = await session.auth.registerPatient(
+        username: _username.text,
+        password: _password.text,
+        preferredPatientId: _patientId.text,
+        fullName: _fullName.text,
+        age: int.parse(_age.text.trim()),
+        sex: _sex,
+      );
 
       session.adopt(user);
       if (mounted) {
@@ -97,8 +88,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Defence in depth: clinician accounts are provisioned server-side with a
+    // custom claim, so there is no client path that can create one. The login
+    // screen does not offer this route for doctors; this guard keeps it true
+    // even if some future caller passes the doctor role.
+    if (_isDoctor) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Clinician access')),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const NoticeBanner(
+                  title: 'Accounts are issued by the coordinator',
+                  message:
+                      'Clinician access is granted on the server after a '
+                      'professional identity check, so it cannot be created '
+                      'from the app. Contact the pilot coordinator with your '
+                      'name and registration details.',
+                  severity: NoticeSeverity.info,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Once your account is provisioned, sign in on the Doctor '
+                  'login with the username you were given.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Back to sign in'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text('New ${widget.role.label.toLowerCase()} account')),
+      appBar: AppBar(
+        title: Text('New ${widget.role.label.toLowerCase()} account'),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -108,7 +144,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_error != null) ...[
-                  NoticeBanner(message: _error!, severity: NoticeSeverity.alert),
+                  NoticeBanner(
+                    message: _error!,
+                    severity: NoticeSeverity.alert,
+                  ),
                   const SizedBox(height: 16),
                 ],
 
@@ -167,86 +206,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
 
                 const SizedBox(height: 24),
-                Text(
-                  _isDoctor ? 'Clinician details' : 'Your details',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('Your details', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _fullName,
                   textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    labelText: _isDoctor ? 'Name' : 'Name (optional)',
-                    prefixIcon: const Icon(Icons.badge_outlined),
+                  decoration: const InputDecoration(
+                    labelText: 'Name (optional)',
+                    prefixIcon: Icon(Icons.badge_outlined),
                   ),
                 ),
 
-                if (_isDoctor) ...[
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _enrolmentCode,
-                    decoration: const InputDecoration(
-                      labelText: 'Clinic enrolment code *',
-                      helperText:
-                          'Issued by the pilot coordinator. Doctor accounts '
-                          'cannot be created without it.',
-                      prefixIcon: Icon(Icons.vpn_key_outlined),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Enter the enrolment code.'
-                        : null,
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _patientId,
+                  decoration: const InputDecoration(
+                    labelText: 'Patient ID (optional)',
+                    helperText:
+                        'If your clinic gave you an ID, enter it. Otherwise '
+                        'one is created for you.',
+                    prefixIcon: Icon(Icons.tag),
                   ),
-                ] else ...[
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _patientId,
-                    decoration: const InputDecoration(
-                      labelText: 'Patient ID (optional)',
-                      helperText:
-                          'If your clinic gave you an ID, enter it. Otherwise '
-                          'one is created for you.',
-                      prefixIcon: Icon(Icons.tag),
-                    ),
-                    validator: (v) {
-                      final value = v?.trim() ?? '';
-                      if (value.isEmpty) return null;
-                      return RegExp(r'^[A-Za-z0-9/_-]{3,32}$').hasMatch(value)
-                          ? null
-                          : '3 to 32 letters, numbers, dash, slash, underscore.';
-                    },
+                  validator: (v) {
+                    final value = v?.trim() ?? '';
+                    if (value.isEmpty) return null;
+                    return RegExp(r'^[A-Za-z0-9/_-]{3,32}$').hasMatch(value)
+                        ? null
+                        : '3 to 32 letters, numbers, dash, slash, underscore.';
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _age,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Age in years *',
+                    helperText:
+                        'Used as a risk factor, so it must be accurate.',
+                    prefixIcon: Icon(Icons.cake_outlined),
                   ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _age,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Age in years *',
-                      helperText:
-                          'Used as a risk factor, so it must be accurate.',
-                      prefixIcon: Icon(Icons.cake_outlined),
-                    ),
-                    validator: (v) {
-                      final parsed = int.tryParse(v?.trim() ?? '');
-                      if (parsed == null) return 'Enter your age in numbers.';
-                      if (parsed < 0 || parsed > 120) {
-                        return 'Enter an age between 0 and 120.';
-                      }
-                      return null;
-                    },
+                  validator: (v) {
+                    final parsed = int.tryParse(v?.trim() ?? '');
+                    if (parsed == null) return 'Enter your age in numbers.';
+                    if (parsed < 0 || parsed > 120) {
+                      return 'Enter an age between 0 and 120.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: _sex,
+                  decoration: const InputDecoration(
+                    labelText: 'Sex (optional)',
+                    prefixIcon: Icon(Icons.wc_outlined),
                   ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _sex,
-                    decoration: const InputDecoration(
-                      labelText: 'Sex (optional)',
-                      prefixIcon: Icon(Icons.wc_outlined),
-                    ),
-                    items: _sexOptions
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                        .toList(),
-                    onChanged: (value) => setState(() => _sex = value),
-                  ),
-                ],
+                  items: _sexOptions
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (value) => setState(() => _sex = value),
+                ),
 
                 const SizedBox(height: 28),
                 FilledButton(
@@ -260,13 +279,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       : const Text('Create account'),
                 ),
                 const SizedBox(height: 20),
-                NoticeBanner(
-                  message: _isDoctor
-                      ? 'Doctor accounts can only see records that a patient '
-                          'has explicitly consented to share.'
-                      : 'Your password is stored only as a salted hash. Your '
-                          'record stays on this device unless you choose to '
-                          'share it with a doctor.',
+                const NoticeBanner(
+                  message:
+                      'Your password is handled by Firebase Authentication and '
+                      'never stored in the database. Your record is visible to '
+                      'a clinician only if you choose to share it.',
                   severity: NoticeSeverity.info,
                 ),
               ],

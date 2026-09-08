@@ -95,3 +95,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Flutter 3.41.5 ships Dart 3.11.3. firebase_core_web 3.11.0 uses a
+# JavaScript-interop API introduced after that SDK, so keep the Web adapter on
+# the last Dart-3.11-compatible release until Flutter is upgraded.
+dependency_overrides:
+  firebase_core_web: 3.10.0

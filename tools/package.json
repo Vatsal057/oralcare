@@ -1,0 +1,13 @@
+{
+  "name": "oralcare-admin-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Admin-side provisioning for the OralCare pilot. Requires Firebase Admin credentials.",
+  "scripts": {
+    "grant-doctor": "node grant_doctor.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "13.6.0"
+  }
+}

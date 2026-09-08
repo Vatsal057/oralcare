@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/local_photo.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/models/patient_case.dart';
 import '../../data/photo_store.dart';
@@ -39,7 +38,9 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
     final id = _case.assessment.id;
     if (id == null) return;
     setState(() => _loading = true);
-    final fresh = await context.read<ClinicalRepository>().caseForAssessment(id);
+    final fresh = await context.read<ClinicalRepository>().caseForAssessment(
+      id,
+    );
     if (!mounted) return;
     setState(() {
       if (fresh != null) _case = fresh;
@@ -212,7 +213,8 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
               SectionCard(
                 title: 'Patient self-examination',
                 icon: Icons.search_outlined,
-                subtitle: '${_case.selfExamination!.examinedCount} of '
+                subtitle:
+                    '${_case.selfExamination!.examinedCount} of '
                     '${ExamSiteCatalog.sites.length} sites examined. '
                     'Patient-reported, not a clinical finding.',
                 children: [
@@ -222,8 +224,8 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
                       value: !finding.examined
                           ? 'Not examined'
                           : finding.abnormality
-                              ? 'Abnormality reported'
-                              : 'No abnormality',
+                          ? 'Abnormality reported'
+                          : 'No abnormality',
                       emphasise: finding.abnormality,
                     ),
                 ],
@@ -246,7 +248,8 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
               onEdit: () async {
                 await Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => ClinicalAssessmentScreen(patientCase: _case),
+                    builder: (_) =>
+                        ClinicalAssessmentScreen(patientCase: _case),
                   ),
                 );
                 if (mounted) await _reload();
@@ -344,21 +347,10 @@ class _LesionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          GestureDetector(
+          LocalPhoto(
+            path: lesion.photoPath!,
+            height: 220,
             onTap: () => _openFullScreen(context, lesion.photoPath!),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                File(lesion.photoPath!),
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox(
-                  height: 220,
-                  child: Center(child: Text('Could not display image')),
-                ),
-              ),
-            ),
           ),
           const SizedBox(height: 8),
           const NoticeBanner(
@@ -374,20 +366,9 @@ class _LesionCard extends StatelessWidget {
   }
 
   void _openFullScreen(BuildContext context, String path) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('Patient photograph')),
-          backgroundColor: Colors.black,
-          body: Center(
-            child: InteractiveViewer(
-              maxScale: 5,
-              child: Image.file(File(path)),
-            ),
-          ),
-        ),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => LocalPhotoFullscreen(path: path)));
   }
 }
 
@@ -410,7 +391,7 @@ class _ClinicianSummaryCard extends StatelessWidget {
       subtitle: review == null
           ? 'Not started.'
           : 'Last updated ${AppFormats.dt(review.updatedAt)} by '
-              '${review.doctorUsername}.',
+                '${review.doctorUsername}.',
       children: [
         if (review != null) ...[
           DetailRow(
@@ -496,7 +477,7 @@ class _OutcomeSummaryCard extends StatelessWidget {
       icon: Icons.science_outlined,
       subtitle: outcome == null
           ? 'Not started. This is the reference standard used to validate the '
-              'algorithm.'
+                'algorithm.'
           : 'Last updated ${AppFormats.dt(outcome.updatedAt)}.',
       children: [
         if (outcome != null) ...[

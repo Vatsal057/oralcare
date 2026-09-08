@@ -105,14 +105,35 @@ The debug APK is written to:
 build/app/outputs/flutter-apk/app-debug.apk
 ```
 
+## Web app
+
+The full OralCare app also runs in the browser using the same Firebase project.
+It supports account, consent, assessment, patient, and clinician-review flows.
+For privacy and browser compatibility, the web version does **not** offer
+camera/gallery capture, device-local photo storage, or photo viewing.
+
+```bash
+flutterfire configure --platforms=android,web
+flutter run -d chrome
+# or create deployable static files
+flutter build web
+```
+
+Firebase Hosting serves the full app from `build/web`.
+
+The separate [`website/`](website) package remains a static, data-free project
+information site if it is needed for a different Hosting target.
+
 ## Test two-device sharing
 
 1. Install the same APK on two Android phones.
 2. On **Phone A**, register a patient, grant app/self-examination and
    share-with-doctor consent, complete a check, and enable **Send this record to
    the doctor queue**.
-3. On **Phone B**, register a doctor account using the pilot enrolment code
-   configured in `AuthRepository`, then open the patient queue.
+3. Provision a clinician account with
+   [`tools/grant_doctor.mjs`](tools/grant_doctor.mjs) (see
+   [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)), then sign in with it on
+   **Phone B** and open the patient queue.
 4. Record a clinical assessment and outcome; the validation screen updates from
    those entries.
 5. Turn share consent off on Phone A. The record should no longer be visible in
@@ -132,13 +153,21 @@ firebase use YOUR_PROJECT_ID
 firebase deploy --only firestore:rules
 ```
 
-The rules restrict patients to their records and limit clinician reads to
-patient-shared assessments. However, the current clinician role is client-set
-following a pilot enrolment-code check. That is **not sufficient for production
-health-data access control**. Before a real deployment, use a verified,
-server-set clinician role (for example, Firebase custom claims), audit logging,
-validated clinical content, data-retention controls, applicable ethical approval,
-and a full security/privacy review.
+The rules restrict patients to their own records and limit clinician reads to
+assessments a patient has shared.
+
+Clinician access is a **server-set custom claim**, not a client-written field.
+`isDoctor()` in the rules checks `request.auth.token.role == 'doctor'`, which can
+only be set with Admin SDK credentials via
+[`tools/grant_doctor.mjs`](tools/grant_doctor.mjs). The rules also refuse any
+client write that puts `role: "doctor"` on a profile without the claim, so
+self-promotion is not possible. There is no enrolment code in the app, and no
+route to create a clinician account from the client.
+
+Still required before handling real patient data: verification against a
+professional register, audit logging of clinician reads, clinically validated
+content, data-retention controls, ethical approval, and a full security and
+privacy review.
 
 ## Quality checks
 
@@ -153,7 +182,7 @@ and a full security/privacy review.
 - Clinician-approved multilingual education content and illustrations
 - Config-driven questionnaire content approved by the clinical team
 - Secure document storage and cross-device photo sharing
-- Server-verified clinician identity and audit events
+- Audit events for clinician reads (server-verified clinician identity is done)
 - Firebase Emulator integration tests for access-control rules
 - Clinical validation and pilot usability evaluation
 

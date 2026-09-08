@@ -17,6 +17,7 @@ class FirestoreRefs {
   static FirebaseFirestore get db => FirebaseFirestore.instance;
 
   static const String usersCollection = 'users';
+  static const String patientIdsCollection = 'patient_ids';
   static const String assessmentsCollection = 'assessments';
   static const String lesionsCollection = 'lesions';
   static const String clinicalCollection = 'clinical';
@@ -33,6 +34,15 @@ class FirestoreRefs {
 
   static DocumentReference<Map<String, dynamic>> user(String uid) =>
       users().doc(uid);
+
+  /// Uniqueness reservation for a human-readable Patient_ID.
+  ///
+  /// A patient cannot query the whole `users` collection (that would expose
+  /// other people's profiles), so uniqueness is enforced by a document whose id
+  /// *is* the Patient_ID. Creating it succeeds only when it does not exist.
+  static DocumentReference<Map<String, dynamic>> patientIdReservation(
+    String patientId,
+  ) => db.collection(patientIdsCollection).doc(patientId);
 
   static CollectionReference<Map<String, dynamic>> assessments() =>
       db.collection(assessmentsCollection);

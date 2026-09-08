@@ -1,10 +1,10 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/common.dart';
+import '../../core/widgets/local_photo.dart';
 import '../../data/photo_store.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
@@ -145,7 +145,8 @@ class _LesionScreenState extends State<LesionScreen> {
                 padding: const EdgeInsets.only(bottom: 14),
                 child: NoticeBanner(
                   title: 'From your self-examination',
-                  message: 'You marked a finding at: ${abnormalSites.join(', ')}.',
+                  message:
+                      'You marked a finding at: ${abnormalSites.join(', ')}.',
                   severity: NoticeSeverity.caution,
                 ),
               ),
@@ -204,7 +205,10 @@ class _LesionScreenState extends State<LesionScreen> {
                         decoration: const InputDecoration(labelText: 'Unit'),
                         items: const [
                           DropdownMenuItem(value: 'days', child: Text('days')),
-                          DropdownMenuItem(value: 'weeks', child: Text('weeks')),
+                          DropdownMenuItem(
+                            value: 'weeks',
+                            child: Text('weeks'),
+                          ),
                         ],
                         onChanged: (value) {
                           draft.durationUnit = value ?? 'days';
@@ -228,24 +232,42 @@ class _LesionScreenState extends State<LesionScreen> {
               subtitle: 'Tick everything that applies.',
               children: [
                 _symptom(flow, 'Pain', draft.pain, (v) => draft.pain = v),
-                _symptom(flow, 'Bleeding', draft.bleeding,
-                    (v) => draft.bleeding = v),
-                _symptom(flow, 'Change in size', draft.changeInSize,
-                    (v) => draft.changeInSize = v),
-                _symptom(flow, 'Change in colour', draft.changeInColour,
-                    (v) => draft.changeInColour = v),
-                _symptom(flow, 'Numbness', draft.numbness,
-                    (v) => draft.numbness = v),
                 _symptom(
-                    flow,
-                    'Difficulty chewing or swallowing',
-                    draft.difficultySwallowing,
-                    (v) => draft.difficultySwallowing = v),
+                  flow,
+                  'Bleeding',
+                  draft.bleeding,
+                  (v) => draft.bleeding = v,
+                ),
                 _symptom(
-                    flow,
-                    'Restricted tongue or jaw movement',
-                    draft.restrictedMovement,
-                    (v) => draft.restrictedMovement = v),
+                  flow,
+                  'Change in size',
+                  draft.changeInSize,
+                  (v) => draft.changeInSize = v,
+                ),
+                _symptom(
+                  flow,
+                  'Change in colour',
+                  draft.changeInColour,
+                  (v) => draft.changeInColour = v,
+                ),
+                _symptom(
+                  flow,
+                  'Numbness',
+                  draft.numbness,
+                  (v) => draft.numbness = v,
+                ),
+                _symptom(
+                  flow,
+                  'Difficulty chewing or swallowing',
+                  draft.difficultySwallowing,
+                  (v) => draft.difficultySwallowing = v,
+                ),
+                _symptom(
+                  flow,
+                  'Restricted tongue or jaw movement',
+                  draft.restrictedMovement,
+                  (v) => draft.restrictedMovement = v,
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -255,11 +277,18 @@ class _LesionScreenState extends State<LesionScreen> {
               icon: Icons.photo_camera_outlined,
               subtitle: flow.photographAllowed
                   ? 'Optional. Stays on this device unless you share your '
-                      'record with a doctor.'
+                        'record with a doctor.'
                   : 'You have not given photograph consent, so this is turned '
-                      'off.',
+                        'off.',
               children: [
-                if (!flow.photographAllowed)
+                if (kIsWeb)
+                  const NoticeBanner(
+                    message:
+                        'Photographs and camera capture are unavailable in the '
+                        'web pilot. You can still record the finding details.',
+                    severity: NoticeSeverity.info,
+                  )
+                else if (!flow.photographAllowed)
                   const NoticeBanner(
                     message:
                         'To add a photograph, turn on photograph consent in '
@@ -267,19 +296,7 @@ class _LesionScreenState extends State<LesionScreen> {
                     severity: NoticeSeverity.info,
                   )
                 else if (PhotoStore.exists(draft.photoPath)) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      File(draft.photoPath!),
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const SizedBox(
-                        height: 200,
-                        child: Center(child: Text('Could not display image')),
-                      ),
-                    ),
-                  ),
+                  LocalPhoto(path: draft.photoPath!, height: 200),
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
                     onPressed: _removePhoto,
@@ -336,9 +353,9 @@ class _LesionScreenState extends State<LesionScreen> {
 
             const SizedBox(height: 20),
             FilledButton(
-              onPressed: () => Navigator.of(context).push(
-                flowRoute(flow, const ResultScreen()),
-              ),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(flowRoute(flow, const ResultScreen())),
               child: const Text('See my result'),
             ),
             const SizedBox(height: 24),
@@ -379,9 +396,9 @@ class _DurationHint extends StatelessWidget {
     return NoticeBanner(
       message: persistent
           ? 'That is ${AppFormats.duration(days)}. Anything lasting two weeks '
-              'or longer needs a professional check.'
+                'or longer needs a professional check.'
           : 'That is ${AppFormats.duration(days)}. Keep watching it. If it '
-              'lasts two weeks or longer, it needs a professional check.',
+                'lasts two weeks or longer, it needs a professional check.',
       severity: persistent ? NoticeSeverity.alert : NoticeSeverity.caution,
     );
   }

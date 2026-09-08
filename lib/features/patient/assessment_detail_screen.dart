@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/local_photo.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/models/clinical_models.dart';
 import '../../data/photo_store.dart';
@@ -86,7 +85,9 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
     setState(() => _shared = value);
     showSnack(
       context,
-      value ? 'Shared with the doctor queue.' : 'Withdrawn from the doctor queue.',
+      value
+          ? 'Shared with the doctor queue.'
+          : 'Withdrawn from the doctor queue.',
     );
   }
 
@@ -96,8 +97,11 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
     final record = widget.record;
     final result = record.result;
     final visuals = RiskVisuals.forState(result.outputState, theme.brightness);
-    final shareConsent =
-        context.watch<SessionController>().requireUser.consent.shareWithDoctor;
+    final shareConsent = context
+        .watch<SessionController>()
+        .requireUser
+        .consent
+        .shareWithDoctor;
 
     return Scaffold(
       appBar: AppBar(title: Text('Check on ${AppFormats.d(record.createdAt)}')),
@@ -151,7 +155,9 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
                     children: [
                       Text(
                         result.outputState.guidance,
-                        style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          height: 1.45,
+                        ),
                       ),
                     ],
                   ),
@@ -165,7 +171,8 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
                         if (record.answers[variable.key] != null)
                           DetailRow(
                             label: variable.label,
-                            value: variable
+                            value:
+                                variable
                                     .optionFor(record.answers[variable.key])
                                     ?.label ??
                                 '—',
@@ -206,8 +213,8 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
                             value: !finding.examined
                                 ? 'Not examined'
                                 : finding.abnormality
-                                    ? 'Abnormality reported'
-                                    : 'Nothing abnormal',
+                                ? 'Abnormality reported'
+                                : 'Nothing abnormal',
                             emphasise: finding.abnormality,
                           ),
                       ],
@@ -236,7 +243,8 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  if (_clinician != null) _DoctorReviewCard(review: _clinician!),
+                  if (_clinician != null)
+                    _DoctorReviewCard(review: _clinician!),
                   if (_clinician != null) const SizedBox(height: 14),
 
                   SectionCard(
@@ -296,7 +304,8 @@ class _LesionCard extends StatelessWidget {
         DetailRow(
           label: 'Duration',
           value: AppFormats.duration(lesion.durationDays),
-          emphasise: (lesion.durationDays ?? 0) >=
+          emphasise:
+              (lesion.durationDays ?? 0) >=
               RiskCatalog.persistenceThresholdDays,
         ),
         DetailRow(
@@ -314,19 +323,7 @@ class _LesionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.file(
-              File(lesion.photoPath!),
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const SizedBox(
-                height: 180,
-                child: Center(child: Text('Could not display image')),
-              ),
-            ),
-          ),
+          LocalPhoto(path: lesion.photoPath!, height: 180),
         ],
       ],
     );

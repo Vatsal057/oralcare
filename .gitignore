@@ -48,3 +48,12 @@ firebase-debug.log
 
 # Keep explicit workspace configuration optional.
 .vscode/
+
+# Firebase Hosting deployment cache and Xcode SwiftPM workspace state
+.firebase/
+**/.swiftpm/
+
+# Admin tooling dependencies and credentials
+node_modules/
+*-service-account*.json
+service-account*.json
