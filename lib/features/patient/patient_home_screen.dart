@@ -55,9 +55,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     final session = context.read<SessionController>();
     final flow = AssessmentFlow(patient: session.requireUser);
 
-    await Navigator.of(context).push(
-      flowRoute(flow, const RiskAssessmentScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(flowRoute(flow, const RiskAssessmentScreen()));
 
     flow.dispose();
     if (mounted) await _load();
@@ -241,9 +241,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
 
   Future<void> _openDetail(RiskAssessmentRecord record) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AssessmentDetailScreen(record: record),
-      ),
+      MaterialPageRoute(builder: (_) => AssessmentDetailScreen(record: record)),
     );
     if (mounted) await _load();
   }
@@ -303,7 +301,7 @@ class _FollowUpCard extends StatelessWidget {
           Text(
             urgent
                 ? 'Your last check said a professional check was required. '
-                    'Have you been seen?'
+                      'Have you been seen?'
                 : 'Time to look again and see whether anything has changed.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: overdue || urgent
@@ -317,10 +315,11 @@ class _FollowUpCard extends StatelessWidget {
             'Due ${AppFormats.d(record.followUpDue)} · from your check on '
             '${AppFormats.d(record.createdAt)}',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: (overdue || urgent
-                      ? theme.colorScheme.onErrorContainer
-                      : theme.colorScheme.onSecondaryContainer)
-                  .withValues(alpha: 0.8),
+              color:
+                  (overdue || urgent
+                          ? theme.colorScheme.onErrorContainer
+                          : theme.colorScheme.onSecondaryContainer)
+                      .withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 12),
@@ -362,8 +361,10 @@ class _AssessmentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final visuals =
-        RiskVisuals.forState(record.result.outputState, theme.brightness);
+    final visuals = RiskVisuals.forState(
+      record.result.outputState,
+      theme.brightness,
+    );
 
     return Card(
       child: InkWell(

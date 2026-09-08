@@ -177,7 +177,9 @@ class _ValidationScreenState extends State<ValidationScreen> {
                         'list matter more than specificity. Use them to decide '
                         'whether the provisional weights and the 0-4 / 5-9 / 10+ '
                         'cut-offs need changing.',
-                        style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          height: 1.5,
+                        ),
                       ),
                     ],
                   ),
@@ -208,7 +210,8 @@ class _MatrixCard extends StatelessWidget {
     return SectionCard(
       title: 'App output vs clinical outcome',
       icon: Icons.grid_on_outlined,
-      subtitle: 'Based on ${matrix.total} case'
+      subtitle:
+          'Based on ${matrix.total} case'
           '${matrix.total == 1 ? '' : 's'} with a recorded outcome.',
       children: [
         Row(
@@ -373,7 +376,10 @@ class _CategoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final visuals = RiskVisuals.forCategory(breakdown.category, theme.brightness);
+    final visuals = RiskVisuals.forCategory(
+      breakdown.category,
+      theme.brightness,
+    );
     final rate = breakdown.positiveRate;
 
     return Column(

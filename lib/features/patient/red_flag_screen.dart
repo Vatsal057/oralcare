@@ -22,9 +22,9 @@ class RedFlagScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     final selectedCount = flow.redFlags.length;
-    final durationLabel = RiskCatalog.variableFor(RiskKeys.lesionDuration)
-        .optionFor(flow.answer(RiskKeys.lesionDuration))
-        ?.label;
+    final durationLabel = RiskCatalog.variableFor(
+      RiskKeys.lesionDuration,
+    ).optionFor(flow.answer(RiskKeys.lesionDuration))?.label;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Safety check')),
@@ -84,9 +84,9 @@ class RedFlagScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
             FilledButton(
-              onPressed: () => Navigator.of(context).push(
-                flowRoute(flow, const SelfExamScreen()),
-              ),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(flowRoute(flow, const SelfExamScreen())),
               child: const Text('Continue to self-examination'),
             ),
             const SizedBox(height: 24),

@@ -12,7 +12,7 @@ import '../../data/repositories/assessment_repository.dart';
 import '../../data/repositories/clinical_repository.dart';
 import '../../domain/risk_catalog.dart';
 import '../../domain/risk_engine.dart';
-import '../../state/session_controller.dart';
+import 'share_with_doctor_card.dart';
 
 /// Read-only patient view of one past assessment.
 ///
@@ -35,11 +35,13 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
   ClinicianAssessmentRecord? _clinician;
   bool _loading = true;
   late bool _shared;
+  String? _sharedWithUid;
 
   @override
   void initState() {
     super.initState();
     _shared = widget.record.sharedWithDoctor;
+    _sharedWithUid = widget.record.sharedWithUid;
     _load();
   }
 
@@ -66,42 +68,12 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
     });
   }
 
-  Future<void> _toggleShare(bool value) async {
-    final id = widget.record.id;
-    if (id == null) return;
-
-    final session = context.read<SessionController>();
-    if (value && !session.requireUser.consent.shareWithDoctor) {
-      showSnack(
-        context,
-        'Turn on share consent in your consent choices first.',
-        isError: true,
-      );
-      return;
-    }
-
-    await context.read<AssessmentRepository>().setSharedWithDoctor(id, value);
-    if (!mounted) return;
-    setState(() => _shared = value);
-    showSnack(
-      context,
-      value
-          ? 'Shared with the doctor queue.'
-          : 'Withdrawn from the doctor queue.',
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final record = widget.record;
     final result = record.result;
     final visuals = RiskVisuals.forState(result.outputState, theme.brightness);
-    final shareConsent = context
-        .watch<SessionController>()
-        .requireUser
-        .consent
-        .shareWithDoctor;
 
     return Scaffold(
       appBar: AppBar(title: Text('Check on ${AppFormats.d(record.createdAt)}')),
@@ -247,26 +219,14 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
                     _DoctorReviewCard(review: _clinician!),
                   if (_clinician != null) const SizedBox(height: 14),
 
-                  SectionCard(
-                    title: 'Sharing',
-                    icon: Icons.share_outlined,
-                    children: [
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Shared with the doctor queue'),
-                        value: _shared,
-                        onChanged: shareConsent ? _toggleShare : null,
-                      ),
-                      if (!shareConsent)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: NoticeBanner(
-                            message:
-                                'Share consent is off, so this record is not '
-                                'visible to any doctor.',
-                          ),
-                        ),
-                    ],
+                  ShareWithDoctorCard(
+                    assessmentId: widget.record.id,
+                    initialShared: _shared,
+                    initialDoctorUid: _sharedWithUid,
+                    onChanged: (shared, doctorUid) => setState(() {
+                      _shared = shared;
+                      _sharedWithUid = doctorUid;
+                    }),
                   ),
 
                   const SizedBox(height: 16),

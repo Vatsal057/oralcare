@@ -78,7 +78,8 @@ node grant_doctor.mjs \
   --project YOUR_PROJECT_ID \
   --username dr.smith \
   --password 'ChooseAStrongPass1' \
-  --name 'Dr A Smith'
+  --name 'Dr A Smith' \
+  --clinic 'City Dental, Ahmedabad'
 
 # Grant the claim to an account that already exists
 node grant_doctor.mjs --project YOUR_PROJECT_ID --username dr.smith

@@ -4,11 +4,7 @@ import 'risk_engine.dart';
 
 /// A scheduled follow-up prompt for the patient.
 class FollowUpPlan {
-  const FollowUpPlan({
-    required this.status,
-    this.due,
-    required this.reason,
-  });
+  const FollowUpPlan({required this.status, this.due, required this.reason});
 
   final FollowUpStatus status;
   final DateTime? due;

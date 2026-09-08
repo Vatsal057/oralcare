@@ -46,11 +46,13 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     });
   }
 
-  List<PatientCase> get _filtered => _cases.where((c) {
+  List<PatientCase> get _filtered => _cases
+      .where((c) {
         if (_onlyUnreviewed && c.isReviewed) return false;
         if (_onlyAlerts && !c.assessment.result.referralAlert) return false;
         return true;
-      }).toList(growable: false);
+      })
+      .toList(growable: false);
 
   @override
   Widget build(BuildContext context) {
@@ -58,8 +60,9 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     final session = context.watch<SessionController>();
     final user = session.requireUser;
 
-    final alertCount =
-        _cases.where((c) => c.assessment.result.referralAlert).length;
+    final alertCount = _cases
+        .where((c) => c.assessment.result.referralAlert)
+        .length;
     final unreviewedCount = _cases.where((c) => !c.isReviewed).length;
     final filtered = _filtered;
 
@@ -157,7 +160,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                         : 'Nothing matches these filters',
                     message: _cases.isEmpty
                         ? 'Records appear here only after a patient consents to '
-                            'share them.'
+                              'share them.'
                         : 'Clear the filters to see the full queue.',
                   ),
                 )
@@ -308,7 +311,8 @@ class _QueueCard extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   _Pill(
-                    label: '${result.outputState.headline} · score '
+                    label:
+                        '${result.outputState.headline} · score '
                         '${result.totalScore}',
                     background: visuals.color,
                     foreground: visuals.onColor,
@@ -316,7 +320,8 @@ class _QueueCard extends StatelessWidget {
                   ),
                   if (result.redFlagPresent)
                     _Pill(
-                      label: '${result.redFlagKeys.length} red flag'
+                      label:
+                          '${result.redFlagKeys.length} red flag'
                           '${result.redFlagKeys.length == 1 ? '' : 's'}',
                       background: theme.colorScheme.surfaceContainerHighest,
                       foreground: theme.colorScheme.onSurface,
@@ -338,7 +343,8 @@ class _QueueCard extends StatelessWidget {
                     ),
                   if (patientCase.lesions.isNotEmpty)
                     _Pill(
-                      label: '${patientCase.lesions.length} lesion record'
+                      label:
+                          '${patientCase.lesions.length} lesion record'
                           '${patientCase.lesions.length == 1 ? '' : 's'}',
                       background: theme.colorScheme.surfaceContainerHighest,
                       foreground: theme.colorScheme.onSurface,
@@ -423,10 +429,10 @@ class _Badge extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
-            ),
+          color: foreground,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -461,9 +467,9 @@ class _Pill extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: foreground,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

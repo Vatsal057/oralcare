@@ -18,6 +18,7 @@ class FirestoreRefs {
 
   static const String usersCollection = 'users';
   static const String patientIdsCollection = 'patient_ids';
+  static const String doctorsCollection = 'doctors';
   static const String assessmentsCollection = 'assessments';
   static const String lesionsCollection = 'lesions';
   static const String clinicalCollection = 'clinical';
@@ -34,6 +35,12 @@ class FirestoreRefs {
 
   static DocumentReference<Map<String, dynamic>> user(String uid) =>
       users().doc(uid);
+
+  /// Public clinician directory, so a patient can choose who to send a record
+  /// to. Written only by the Admin SDK provisioning script; it holds no patient
+  /// data and never any contact detail beyond what a clinician agrees to list.
+  static CollectionReference<Map<String, dynamic>> doctors() =>
+      db.collection(doctorsCollection);
 
   /// Uniqueness reservation for a human-readable Patient_ID.
   ///

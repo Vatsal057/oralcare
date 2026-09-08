@@ -37,6 +37,7 @@ class RiskAssessmentRecord {
     required this.answers,
     required this.result,
     this.sharedWithDoctor = false,
+    this.sharedWithUid,
     this.followUpDue,
     this.followUpStatus = FollowUpStatus.notRequired,
   });
@@ -60,6 +61,18 @@ class RiskAssessmentRecord {
   /// True only when the patient granted share-with-doctor consent.
   final bool sharedWithDoctor;
 
+  /// The uid of the one clinician the patient chose to send this record to.
+  ///
+  /// Sharing is addressed, not broadcast: the security rules only let a
+  /// clinician read an assessment when this matches their own uid, so no other
+  /// clinician can see it. Null means the record has not been sent to anyone.
+  final String? sharedWithUid;
+
+  /// A record is only visible to a clinician when it is both switched on and
+  /// addressed to someone.
+  bool get isSharedWithSomeone =>
+      sharedWithDoctor && (sharedWithUid?.isNotEmpty ?? false);
+
   final DateTime? followUpDue;
   final FollowUpStatus followUpStatus;
 
@@ -71,6 +84,8 @@ class RiskAssessmentRecord {
   RiskAssessmentRecord copyWith({
     int? id,
     bool? sharedWithDoctor,
+    String? sharedWithUid,
+    bool clearSharedWithUid = false,
     DateTime? followUpDue,
     FollowUpStatus? followUpStatus,
   }) => RiskAssessmentRecord(
@@ -80,6 +95,11 @@ class RiskAssessmentRecord {
     answers: answers,
     result: result,
     sharedWithDoctor: sharedWithDoctor ?? this.sharedWithDoctor,
+    // A null default cannot express "remove the recipient", so clearing is an
+    // explicit flag rather than an ambiguous null.
+    sharedWithUid: clearSharedWithUid
+        ? null
+        : (sharedWithUid ?? this.sharedWithUid),
     followUpDue: followUpDue ?? this.followUpDue,
     followUpStatus: followUpStatus ?? this.followUpStatus,
   );
@@ -104,6 +124,7 @@ class RiskAssessmentRecord {
       result.reasons.map((r) => {'code': r.code, 'detail': r.detail}).toList(),
     ),
     'shared_with_doctor': sharedWithDoctor ? 1 : 0,
+    'shared_with_uid': sharedWithUid,
     'follow_up_due': followUpDue?.toIso8601String(),
     'follow_up_status': followUpStatus.storageValue,
   };
@@ -111,29 +132,35 @@ class RiskAssessmentRecord {
   factory RiskAssessmentRecord.fromRow(Map<String, Object?> row) {
     final answers = (jsonDecode(row['answers_json'] as String? ?? '{}') as Map)
         .map((k, v) => MapEntry(k as String, v as String?));
-    final redFlags = (jsonDecode(row['red_flags_json'] as String? ?? '[]') as List)
-        .cast<String>();
-    final unknown = (jsonDecode(row['unknown_keys_json'] as String? ?? '[]') as List)
-        .cast<String>();
+    final redFlags =
+        (jsonDecode(row['red_flags_json'] as String? ?? '[]') as List)
+            .cast<String>();
+    final unknown =
+        (jsonDecode(row['unknown_keys_json'] as String? ?? '[]') as List)
+            .cast<String>();
     final breakdown =
-        (jsonDecode(row['breakdown_json'] as String? ?? '{}') as Map)
-            .map((k, v) => MapEntry(k as String, (v as num).toInt()));
+        (jsonDecode(row['breakdown_json'] as String? ?? '{}') as Map).map(
+          (k, v) => MapEntry(k as String, (v as num).toInt()),
+        );
     final reasons = (jsonDecode(row['reasons_json'] as String? ?? '[]') as List)
-        .map((e) => RiskReason(
-              (e as Map)['code'] as String,
-              e['detail'] as String,
-            ))
+        .map(
+          (e) =>
+              RiskReason((e as Map)['code'] as String, e['detail'] as String),
+        )
         .toList();
 
     return RiskAssessmentRecord(
       id: row['id'] as int?,
       patientId: row['patient_id'] as String,
-      createdAt: DateTime.tryParse(row['created_at'] as String? ?? '') ??
+      createdAt:
+          DateTime.tryParse(row['created_at'] as String? ?? '') ??
           DateTime.now(),
       answers: answers,
       result: RiskResult(
         totalScore: (row['risk_score'] as int?) ?? 0,
-        category: RiskCategoryX.fromStorage(row['risk_category'] as String? ?? 'lower'),
+        category: RiskCategoryX.fromStorage(
+          row['risk_category'] as String? ?? 'lower',
+        ),
         outputState: PatientOutputStateX.fromStorage(
           row['output_state'] as String? ?? 'lower_risk',
         ),
@@ -141,16 +168,19 @@ class RiskAssessmentRecord {
         redFlagKeys: redFlags,
         lesionPersistent: (row['lesion_persistent'] as int? ?? 0) == 1,
         previousOscc: (row['previous_oscc'] as int? ?? 0) == 1,
-        professionalCheckRequired: (row['professional_check'] as int? ?? 0) == 1,
+        professionalCheckRequired:
+            (row['professional_check'] as int? ?? 0) == 1,
         referralAlert: (row['referral_alert'] as int? ?? 0) == 1,
         unknownAnswerKeys: unknown,
         reasons: reasons,
         scoreBreakdown: breakdown,
       ),
       sharedWithDoctor: (row['shared_with_doctor'] as int? ?? 0) == 1,
+      sharedWithUid: row['shared_with_uid'] as String?,
       followUpDue: DateTime.tryParse(row['follow_up_due'] as String? ?? ''),
-      followUpStatus:
-          FollowUpStatusX.fromStorage(row['follow_up_status'] as String?),
+      followUpStatus: FollowUpStatusX.fromStorage(
+        row['follow_up_status'] as String?,
+      ),
     );
   }
 }
@@ -235,10 +265,14 @@ class SelfExaminationRecord {
         id: row['id'] as int?,
         assessmentId: row['assessment_id'] as int?,
         patientId: row['patient_id'] as String,
-        createdAt: DateTime.tryParse(row['created_at'] as String? ?? '') ??
+        createdAt:
+            DateTime.tryParse(row['created_at'] as String? ?? '') ??
             DateTime.now(),
         findings: (jsonDecode(row['sites_json'] as String? ?? '[]') as List)
-            .map((e) => ExamSiteFinding.fromJson((e as Map).cast<String, Object?>()))
+            .map(
+              (e) =>
+                  ExamSiteFinding.fromJson((e as Map).cast<String, Object?>()),
+            )
             .toList(),
       );
 }
@@ -361,8 +395,9 @@ class LesionRecord {
     createdAt:
         DateTime.tryParse(row['created_at'] as String? ?? '') ?? DateTime.now(),
     site: row['site'] as String?,
-    dateFirstNoticed:
-        DateTime.tryParse(row['date_first_noticed'] as String? ?? ''),
+    dateFirstNoticed: DateTime.tryParse(
+      row['date_first_noticed'] as String? ?? '',
+    ),
     durationDays: row['duration_days'] as int?,
     pain: (row['pain'] as int? ?? 0) == 1,
     bleeding: (row['bleeding'] as int? ?? 0) == 1,

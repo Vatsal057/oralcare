@@ -5,6 +5,7 @@ import 'core/theme.dart';
 import 'data/models/app_user.dart';
 import 'data/repositories/assessment_repository.dart';
 import 'data/repositories/clinical_repository.dart';
+import 'data/repositories/doctor_directory_repository.dart';
 import 'features/auth/role_select_screen.dart';
 import 'features/doctor/doctor_home_screen.dart';
 import 'features/patient/consent_screen.dart';
@@ -23,6 +24,7 @@ class OralCancerApp extends StatelessWidget {
         ),
         Provider(create: (_) => AssessmentRepository()),
         Provider(create: (_) => ClinicalRepository()),
+        Provider(create: (_) => const DoctorDirectoryRepository()),
       ],
       child: MaterialApp(
         title: 'OralCare',
@@ -50,9 +52,7 @@ class _RootRouter extends StatelessWidget {
     // While restoring a persisted Firebase session, show a splash rather than
     // flashing the login screen.
     if (session.isInitialising) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final user = session.user;

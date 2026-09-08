@@ -48,6 +48,17 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- clinician directory ----------------------------------------------
+    // The list a patient chooses a recipient from. Any signed-in user may read
+    // it, because a patient must be able to see who they can send a record to.
+    // It holds no patient data. All client writes are refused: entries are
+    // created only by the Admin SDK provisioning script, alongside the custom
+    // claim, so the directory cannot be used to fake a clinician.
+    match /doctors/{doctorUid} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     // ---- patient id reservations ------------------------------------------
     // The document id is the Patient_ID. A patient cannot query `users` to test
     // uniqueness (that would expose other profiles), so registration claims the
@@ -67,14 +78,17 @@ service cloud.firestore {
       function isOwner() {
         return isSignedIn() && resource.data.owner_uid == request.auth.uid;
       }
-      function isSharedWithDoctors() {
-        return resource.data.shared_with_doctor == 1;
+      // Sharing is addressed to one clinician, not broadcast. The record must
+      // be switched on AND name this reader, so no other clinician can read it.
+      function isSharedWithMe() {
+        return resource.data.shared_with_doctor == 1
+          && resource.data.shared_with_uid == request.auth.uid;
       }
 
-      // The patient owns their assessment. A doctor may read it only when it is
-      // shared. (Live consent is also re-checked in the app against the user
-      // profile.)
-      allow read: if isOwner() || (isDoctor() && isSharedWithDoctors());
+      // The patient owns their assessment. A clinician may read it only when the
+      // patient chose them as the recipient. (Live consent is also re-checked in
+      // the app against the user profile.)
+      allow read: if isOwner() || (isDoctor() && isSharedWithMe());
 
       // Only the owning patient creates or edits an assessment, and the
       // owner_uid must be their own uid.
@@ -90,7 +104,9 @@ service cloud.firestore {
           return get(/databases/$(database)/documents/assessments/$(assessmentId)).data;
         }
         allow read: if (isSignedIn() && parent().owner_uid == request.auth.uid)
-          || (isDoctor() && parent().shared_with_doctor == 1);
+          || (isDoctor()
+              && parent().shared_with_doctor == 1
+              && parent().shared_with_uid == request.auth.uid);
         allow create, update, delete: if isSignedIn()
           && parent().owner_uid == request.auth.uid;
       }
@@ -101,18 +117,29 @@ service cloud.firestore {
         function parent() {
           return get(/databases/$(database)/documents/assessments/$(assessmentId)).data;
         }
+        function isMyPatient() {
+          return isDoctor()
+            && parent().shared_with_doctor == 1
+            && parent().shared_with_uid == request.auth.uid;
+        }
         allow read: if (isSignedIn() && parent().owner_uid == request.auth.uid)
-          || isDoctor();
-        allow write: if isDoctor();
+          || isMyPatient();
+        // Only the clinician the record was sent to may record findings on it.
+        allow write: if isMyPatient();
       }
 
       match /outcome/{docId} {
         function parent() {
           return get(/databases/$(database)/documents/assessments/$(assessmentId)).data;
         }
+        function isMyPatient() {
+          return isDoctor()
+            && parent().shared_with_doctor == 1
+            && parent().shared_with_uid == request.auth.uid;
+        }
         allow read: if (isSignedIn() && parent().owner_uid == request.auth.uid)
-          || isDoctor();
-        allow write: if isDoctor();
+          || isMyPatient();
+        allow write: if isMyPatient();
       }
     }
 

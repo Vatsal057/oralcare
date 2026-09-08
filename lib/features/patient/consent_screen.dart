@@ -48,7 +48,9 @@ class _ConsentScreenState extends State<ConsentScreen> {
       // When this is the initial gate, the root router swaps the screen as soon
       // as consent is granted, so no navigation is needed here.
     } catch (e) {
-      if (mounted) showSnack(context, 'Could not save consent. $e', isError: true);
+      if (mounted) {
+        showSnack(context, 'Could not save consent. $e', isError: true);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -139,7 +141,9 @@ class _ConsentScreenState extends State<ConsentScreen> {
                       height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.5),
                     )
-                  : Text(widget.isEditing ? 'Save choices' : 'Agree and continue'),
+                  : Text(
+                      widget.isEditing ? 'Save choices' : 'Agree and continue',
+                    ),
             ),
             if (!_consent.appAndSelfExam)
               Padding(

@@ -63,8 +63,10 @@ extension PatientOutputStateX on PatientOutputState {
     PatientOutputState.lowerRisk => 'Lower risk',
     PatientOutputState.increasedRisk => 'Increased risk',
     PatientOutputState.higherRisk => 'Higher risk',
-    PatientOutputState.observeAndReview => 'Finding recorded — review if it persists',
-    PatientOutputState.professionalCheckRequired => 'PROFESSIONAL CHECK REQUIRED',
+    PatientOutputState.observeAndReview =>
+      'Finding recorded — review if it persists',
+    PatientOutputState.professionalCheckRequired =>
+      'PROFESSIONAL CHECK REQUIRED',
   };
 
   /// Guidance text, transcribed from spec Table 7.
@@ -170,7 +172,9 @@ class RiskEngine {
   /// Maps a provisional total onto the patient-facing band (spec Table 3).
   static RiskCategory categoryForScore(int score) {
     if (score <= RiskCatalog.lowerRiskMaxScore) return RiskCategory.lower;
-    if (score <= RiskCatalog.increasedRiskMaxScore) return RiskCategory.increased;
+    if (score <= RiskCatalog.increasedRiskMaxScore) {
+      return RiskCategory.increased;
+    }
     return RiskCategory.higher;
   }
 
@@ -247,8 +251,7 @@ class RiskEngine {
     final category = categoryForScore(total);
 
     // ---- Red flags and duration -------------------------------------------
-    final gateSaysYes =
-        resolved[RiskKeys.suspiciousLesion] == AnswerValues.yes;
+    final gateSaysYes = resolved[RiskKeys.suspiciousLesion] == AnswerValues.yes;
     final neckLump = resolved[RiskKeys.neckLump] == AnswerValues.yes;
 
     final flags = <String>{...redFlagKeys};
@@ -261,7 +264,8 @@ class RiskEngine {
 
     final durationBand = resolved[RiskKeys.lesionDuration];
     final persistentByBand = durationBand == AnswerValues.twoWeeksOrMore;
-    final persistentByDays = lesionDurationDays != null &&
+    final persistentByDays =
+        lesionDurationDays != null &&
         lesionDurationDays >= RiskCatalog.persistenceThresholdDays;
     final lesionPersistent =
         redFlagPresent && (persistentByBand || persistentByDays);
@@ -277,69 +281,85 @@ class RiskEngine {
     if (redFlagPresent && lesionPersistent) {
       professionalCheck = true;
       state = PatientOutputState.professionalCheckRequired;
-      reasons.add(const RiskReason(
-        'red_flag_persistent',
-        'A red-flag finding has been present for two weeks or longer, so the '
-            'red-flag override applies and a professional check is required.',
-      ));
+      reasons.add(
+        const RiskReason(
+          'red_flag_persistent',
+          'A red-flag finding has been present for two weeks or longer, so the '
+              'red-flag override applies and a professional check is required.',
+        ),
+      );
     } else if (previousOscc) {
       professionalCheck = true;
       state = PatientOutputState.professionalCheckRequired;
-      reasons.add(const RiskReason(
-        'previous_oscc',
-        'Previous oral cancer reported, so professional follow-up is advised '
-            'irrespective of the score.',
-      ));
+      reasons.add(
+        const RiskReason(
+          'previous_oscc',
+          'Previous oral cancer reported, so professional follow-up is advised '
+              'irrespective of the score.',
+        ),
+      );
     } else if (redFlagPresent) {
       state = PatientOutputState.observeAndReview;
-      reasons.add(const RiskReason(
-        'red_flag_short_duration',
-        'A red-flag finding is present but has lasted less than two weeks. '
-            'The finding is recorded; observation and review are advised if it '
-            'persists.',
-      ));
+      reasons.add(
+        const RiskReason(
+          'red_flag_short_duration',
+          'A red-flag finding is present but has lasted less than two weeks. '
+              'The finding is recorded; observation and review are advised if it '
+              'persists.',
+        ),
+      );
     } else {
       state = switch (category) {
         RiskCategory.lower => PatientOutputState.lowerRisk,
         RiskCategory.increased => PatientOutputState.increasedRisk,
         RiskCategory.higher => PatientOutputState.higherRisk,
       };
-      reasons.add(RiskReason(
-        'numerical_category',
-        'No red flag reported, so the provisional numerical score of $total '
-            'places this assessment in the ${category.label.toLowerCase()} '
-            'band.',
-      ));
+      reasons.add(
+        RiskReason(
+          'numerical_category',
+          'No red flag reported, so the provisional numerical score of $total '
+              'places this assessment in the ${category.label.toLowerCase()} '
+              'band.',
+        ),
+      );
     }
 
-    if (previousOscc && state == PatientOutputState.professionalCheckRequired &&
+    if (previousOscc &&
+        state == PatientOutputState.professionalCheckRequired &&
         !reasons.any((r) => r.code == 'previous_oscc')) {
-      reasons.add(const RiskReason(
-        'previous_oscc',
-        'Previous oral cancer reported, so professional follow-up is advised '
-            'irrespective of the score.',
-      ));
+      reasons.add(
+        const RiskReason(
+          'previous_oscc',
+          'Previous oral cancer reported, so professional follow-up is advised '
+              'irrespective of the score.',
+        ),
+      );
     }
 
     if (selfExamAbnormality) {
-      reasons.add(const RiskReason(
-        'self_exam_abnormality',
-        'The guided self-examination reported an abnormality, so the '
-            'lesion-recording module was opened.',
-      ));
+      reasons.add(
+        const RiskReason(
+          'self_exam_abnormality',
+          'The guided self-examination reported an abnormality, so the '
+              'lesion-recording module was opened.',
+        ),
+      );
     }
 
     if (unknown.isNotEmpty) {
-      reasons.add(RiskReason(
-        'unknown_answers',
-        'Retained as unknown rather than scored as zero: '
-            '${unknown.map((k) => RiskCatalog.variableFor(k).label).join(', ')}.',
-      ));
+      reasons.add(
+        RiskReason(
+          'unknown_answers',
+          'Retained as unknown rather than scored as zero: '
+              '${unknown.map((k) => RiskCatalog.variableFor(k).label).join(', ')}.',
+        ),
+      );
     }
 
     // A higher band also warrants a professional oral examination (Table 7),
     // so it raises a queue alert without being an override.
-    final referralAlert = professionalCheck ||
+    final referralAlert =
+        professionalCheck ||
         category == RiskCategory.higher ||
         (redFlagPresent && selfExamAbnormality);
 

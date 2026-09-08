@@ -9,7 +9,7 @@ import '../../domain/follow_up_policy.dart';
 import '../../domain/risk_catalog.dart';
 import '../../domain/risk_engine.dart';
 import '../../state/assessment_flow.dart';
-import '../../state/session_controller.dart';
+import 'share_with_doctor_card.dart';
 
 /// Patient output (spec section 2.6, Table 7).
 ///
@@ -40,7 +40,6 @@ class _ResultScreenState extends State<ResultScreen> {
   Future<void> _commit() async {
     final flow = context.read<AssessmentFlow>();
     final repo = context.read<AssessmentRepository>();
-    final session = context.read<SessionController>();
 
     try {
       final result = flow.evaluate();
@@ -49,18 +48,17 @@ class _ResultScreenState extends State<ResultScreen> {
         lesionFirstNoticed: flow.lesion.dateFirstNoticed,
       );
 
-      // Share only when the patient granted share-with-doctor consent.
-      final share = session.requireUser.consent.shareWithDoctor;
-
-      final assessment = flow.buildAssessment(result).copyWith(
-            sharedWithDoctor: share,
-            followUpDue: plan.due,
-            followUpStatus: plan.status,
-          );
+      // Nothing is shared on save. Sharing is addressed to a specific
+      // clinician, so it only happens once the patient chooses one below.
+      final assessment = flow
+          .buildAssessment(result)
+          .copyWith(followUpDue: plan.due, followUpStatus: plan.status);
 
       final id = await repo.saveAssessment(assessment);
 
-      await repo.saveSelfExamination(flow.buildSelfExamination(assessmentId: id));
+      await repo.saveSelfExamination(
+        flow.buildSelfExamination(assessmentId: id),
+      );
 
       if (flow.lesion.hasAnyContent) {
         await repo.saveLesion(
@@ -73,7 +71,7 @@ class _ResultScreenState extends State<ResultScreen> {
         _result = result;
         _plan = plan;
         _assessmentId = id;
-        _shared = share;
+        _shared = false;
         _saving = false;
       });
     } catch (e) {
@@ -85,39 +83,10 @@ class _ResultScreenState extends State<ResultScreen> {
     }
   }
 
-  Future<void> _toggleShare(bool value) async {
-    final id = _assessmentId;
-    if (id == null) return;
-
-    final session = context.read<SessionController>();
-    final repo = context.read<AssessmentRepository>();
-
-    if (value && !session.requireUser.consent.shareWithDoctor) {
-      showSnack(
-        context,
-        'Turn on "Share my record with a doctor" in your consent choices first.',
-        isError: true,
-      );
-      return;
-    }
-
-    await repo.setSharedWithDoctor(id, value);
-    if (!mounted) return;
-    setState(() => _shared = value);
-    showSnack(
-      context,
-      value
-          ? 'Your record has been sent to the doctor queue.'
-          : 'Your record has been withdrawn from the doctor queue.',
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_saving) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_error != null || _result == null) {
@@ -138,8 +107,6 @@ class _ResultScreenState extends State<ResultScreen> {
     final plan = _plan!;
     final theme = Theme.of(context);
     final visuals = RiskVisuals.forState(result.outputState, theme.brightness);
-    final session = context.watch<SessionController>();
-    final shareConsent = session.requireUser.consent.shareWithDoctor;
 
     return Scaffold(
       appBar: AppBar(
@@ -200,27 +167,10 @@ class _ResultScreenState extends State<ResultScreen> {
             ),
             const SizedBox(height: 14),
 
-            SectionCard(
-              title: 'Share with a doctor',
-              icon: Icons.share_outlined,
-              subtitle: shareConsent
-                  ? 'A doctor using this app can review your record.'
-                  : 'You have not consented to share your record.',
-              children: [
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Send this record to the doctor queue'),
-                  subtitle: Text(
-                    shareConsent
-                        ? 'Includes your answers, self-examination findings and '
-                            'any photograph.'
-                        : 'Turn on share consent in your consent choices to '
-                            'enable this.',
-                  ),
-                  value: _shared,
-                  onChanged: shareConsent ? _toggleShare : null,
-                ),
-              ],
+            ShareWithDoctorCard(
+              assessmentId: _assessmentId,
+              initialShared: _shared,
+              initialDoctorUid: null,
             ),
 
             const SizedBox(height: 20),

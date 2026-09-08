@@ -119,7 +119,11 @@ class NoticeBanner extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final (Color background, Color foreground, IconData icon) = switch (severity) {
+    final (
+      Color background,
+      Color foreground,
+      IconData icon,
+    ) = switch (severity) {
       NoticeSeverity.info => (
         isDark ? const Color(0xFF10344F) : const Color(0xFFE7F2FA),
         isDark ? Colors.white : const Color(0xFF0B4A6F),

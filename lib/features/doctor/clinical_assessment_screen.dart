@@ -75,16 +75,22 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
   Future<void> _save() async {
     final assessmentId = widget.patientCase.assessment.id;
     if (assessmentId == null) {
-      showSnack(context, 'This record has no id and cannot be saved.',
-          isError: true);
+      showSnack(
+        context,
+        'This record has no id and cannot be saved.',
+        isError: true,
+      );
       return;
     }
 
     final sizeText = _size.text.trim();
     final size = sizeText.isEmpty ? null : double.tryParse(sizeText);
     if (sizeText.isNotEmpty && size == null) {
-      showSnack(context, 'Lesion size must be a number in millimetres.',
-          isError: true);
+      showSnack(
+        context,
+        'Lesion size must be a number in millimetres.',
+        isError: true,
+      );
       return;
     }
 
@@ -156,16 +162,15 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
     final result = widget.patientCase.assessment.result;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Clinical assessment'),
-      ),
+      appBar: AppBar(title: const Text('Clinical assessment')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
             NoticeBanner(
               title: 'Reviewing ${widget.patientCase.patientId}',
-              message: 'App output: ${result.outputState.headline}. '
+              message:
+                  'App output: ${result.outputState.headline}. '
                   '${ClinicalNotices.doctorResponsibility}',
               severity: result.professionalCheckRequired
                   ? NoticeSeverity.alert
@@ -201,8 +206,9 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: _size,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
                     labelText: 'Greatest dimension (mm)',
                     suffixText: 'mm',

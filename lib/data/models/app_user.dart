@@ -144,6 +144,6 @@ class AppUser {
         ),
         createdAt:
             DateTime.tryParse(data['created_at'] as String? ?? '') ??
-                DateTime.now(),
+            DateTime.now(),
       );
 }

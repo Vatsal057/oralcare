@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../firestore_refs.dart';
 import '../models/app_user.dart';
@@ -8,21 +9,30 @@ import '../models/patient_case.dart';
 
 /// Doctor-side reads and writes, backed by Firestore.
 ///
-/// Every read is gated on `shared_with_doctor == 1` AND re-checks the patient's
-/// live share consent. A record the patient has not consented to share, or has
-/// withdrawn sharing on, is never returned to the doctor interface (spec
-/// Table 1: "Consent to share with doctor — enable/disable doctor access").
+/// Every read is restricted to assessments the patient addressed to *this*
+/// clinician (`shared_with_uid == my uid`) AND re-checks the patient's live
+/// share consent. A record sent to a different clinician, never shared, or
+/// withdrawn is never returned (spec Table 1: "Consent to share with doctor —
+/// enable/disable doctor access").
 ///
 /// The Firestore security rules enforce the same gate on the server; this class
 /// is the client-side counterpart.
 class ClinicalRepository {
-  ClinicalRepository();
+  ClinicalRepository({FirebaseAuth? auth})
+    : _auth = auth ?? FirebaseAuth.instance;
 
-  /// The doctor's queue: consented assessments, referral alerts first, then
-  /// most recent.
+  final FirebaseAuth _auth;
+
+  String? get _uid => _auth.currentUser?.uid;
+
+  /// This clinician's queue: records addressed to them, referral alerts first,
+  /// then most recent.
   Future<List<PatientCase>> queue({bool onlyUnreviewed = false}) async {
+    final uid = _uid;
+    if (uid == null) return const [];
+
     final query = await FirestoreRefs.assessments()
-        .where('shared_with_doctor', isEqualTo: 1)
+        .where('shared_with_uid', isEqualTo: uid)
         .get();
 
     final cases = <PatientCase>[];
@@ -48,23 +58,25 @@ class ClinicalRepository {
     final snapshot = await FirestoreRefs.assessment(assessmentId).get();
     if (!snapshot.exists) return null;
     final assessment = _assessmentFromSnapshot(snapshot);
-    if (!assessment.sharedWithDoctor) return null;
+    // Only the clinician the patient addressed the record to may open it.
+    if (!assessment.isSharedWithSomeone) return null;
+    if (assessment.sharedWithUid != _uid) return null;
     return _buildCase(assessment);
   }
 
   /// Every consented case, for the validation screen (spec section 4).
   Future<List<PatientCase>> allSharedCases() => queue();
 
-  Future<void> saveClinicianAssessment(
-    ClinicianAssessmentRecord record,
-  ) async {
-    await FirestoreRefs.clinical(record.assessmentId)
-        .set(record.toRow()..remove('id'));
+  Future<void> saveClinicianAssessment(ClinicianAssessmentRecord record) async {
+    await FirestoreRefs.clinical(
+      record.assessmentId,
+    ).set(record.toRow()..remove('id'));
   }
 
   Future<void> saveOutcome(OutcomeRecord record) async {
-    await FirestoreRefs.outcome(record.assessmentId)
-        .set(record.toRow()..remove('id'));
+    await FirestoreRefs.outcome(
+      record.assessmentId,
+    ).set(record.toRow()..remove('id'));
   }
 
   Future<ClinicianAssessmentRecord?> clinicianAssessmentFor(
@@ -99,8 +111,7 @@ class ClinicalRepository {
 
     final assessmentSnapshot = await FirestoreRefs.assessment(id).get();
     SelfExaminationRecord? selfExam;
-    final selfExamRaw =
-        assessmentSnapshot.data()?[FirestoreRefs.selfExamField];
+    final selfExamRaw = assessmentSnapshot.data()?[FirestoreRefs.selfExamField];
     if (selfExamRaw is Map) {
       selfExam = SelfExaminationRecord.fromRow(
         Map<String, Object?>.from(selfExamRaw),
@@ -112,8 +123,7 @@ class ClinicalRepository {
       final data = Map<String, Object?>.from(doc.data());
       data['id'] = int.tryParse(doc.id);
       return LesionRecord.fromRow(data);
-    }).toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }).toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     return PatientCase(
       patient: patient,

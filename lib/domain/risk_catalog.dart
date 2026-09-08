@@ -190,7 +190,8 @@ class RiskCatalog {
       key: RiskKeys.gutkha,
       label: 'Gutkha / pan masala',
       role: RiskVariableRole.exposureOnly,
-      note: 'Exposure is recorded. Final weight is still to be validated, so '
+      note:
+          'Exposure is recorded. Final weight is still to be validated, so '
           'this answer does not change the score in this pilot build.',
       options: [
         RiskOption('no', 'No', unweighted: true),
@@ -230,7 +231,8 @@ class RiskCatalog {
     RiskVariable(
       key: RiskKeys.previousOpmd,
       label: 'Previous oral potentially malignant disorder (OPMD)',
-      note: 'A "Don\'t know" answer is kept as unknown rather than scored as '
+      note:
+          'A "Don\'t know" answer is kept as unknown rather than scored as '
           'zero, so the record stays auditable.',
       options: [
         RiskOption(AnswerValues.no, 'No', score: 0),
@@ -241,7 +243,8 @@ class RiskCatalog {
     RiskVariable(
       key: RiskKeys.previousOscc,
       label: 'Previous oral cancer (OSCC)',
-      note: 'A "Yes" answer means professional follow-up is advised '
+      note:
+          'A "Yes" answer means professional follow-up is advised '
           'irrespective of the score.',
       options: [
         RiskOption(AnswerValues.no, 'No', score: 0),

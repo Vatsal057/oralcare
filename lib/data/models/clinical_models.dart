@@ -128,7 +128,8 @@ class ClinicianAssessmentRecord {
         assessmentId: row['assessment_id'] as int,
         patientId: row['patient_id'] as String,
         doctorUsername: row['doctor_username'] as String? ?? '',
-        updatedAt: DateTime.tryParse(row['updated_at'] as String? ?? '') ??
+        updatedAt:
+            DateTime.tryParse(row['updated_at'] as String? ?? '') ??
             DateTime.now(),
         examinationPerformed: _nb(row['examination_performed']),
         lesionPresent: _nb(row['lesion_present']),

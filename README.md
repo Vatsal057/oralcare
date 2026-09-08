@@ -16,6 +16,8 @@ mouth self-examination, consented clinician review, and follow-up.
 ### Patient experience
 
 - Separate patient account, consent, and sharing choices
+- The patient chooses **which clinician** receives a record; no one else can
+  open it, and the choice can be changed or withdrawn at any time
 - Risk assessment across 13 variables, including tobacco, areca nut, alcohol,
   clinical history, symptoms, and lesion duration
 - Ten-item red-flag safety check and a 14-day escalation rule
@@ -27,7 +29,8 @@ mouth self-examination, consented clinician review, and follow-up.
 
 ### Clinician experience
 
-- Separate clinician account and consent-filtered patient queue
+- Separate clinician account, with a queue containing only records addressed to
+  that clinician
 - Referral-alert prioritisation
 - Review of risk, symptoms, self-examination, and lesion entries
 - Clinical assessment, investigation, biopsy, referral, and follow-up entry
@@ -128,16 +131,18 @@ information site if it is needed for a different Hosting target.
 
 1. Install the same APK on two Android phones.
 2. On **Phone A**, register a patient, grant app/self-examination and
-   share-with-doctor consent, complete a check, and enable **Send this record to
-   the doctor queue**.
+   share-with-doctor consent, complete a check, then pick the clinician under
+   **Send to a doctor** and switch sharing on.
 3. Provision a clinician account with
    [`tools/grant_doctor.mjs`](tools/grant_doctor.mjs) (see
    [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)), then sign in with it on
    **Phone B** and open the patient queue.
 4. Record a clinical assessment and outcome; the validation screen updates from
    those entries.
-5. Turn share consent off on Phone A. The record should no longer be visible in
-   the doctor queue.
+5. Turn share consent off on Phone A, or switch sharing off. The record should no
+   longer be visible in the doctor queue.
+6. Provision a second clinician and re-address the record to them. It should
+   appear in the second queue and disappear from the first.
 
 Photographs currently remain on the capturing device. They are intentionally not
 synced because Firebase Storage is not configured in this pilot.
@@ -153,8 +158,15 @@ firebase use YOUR_PROJECT_ID
 firebase deploy --only firestore:rules
 ```
 
-The rules restrict patients to their own records and limit clinician reads to
-assessments a patient has shared.
+The rules restrict patients to their own records. Sharing is **addressed, not
+broadcast**: a patient picks one clinician from the directory, and the rules only
+allow a read when `shared_with_doctor == 1` and `shared_with_uid` equals the
+reader's own uid. Clinical findings and outcomes can likewise only be written by
+the clinician the record was sent to.
+
+The clinician directory (`doctors/{uid}`) is readable by any signed-in user so
+patients can choose a recipient, but every client write to it is refused: entries
+are created only by the provisioning script, alongside the custom claim.
 
 Clinician access is a **server-set custom claim**, not a client-written field.
 `isDoctor()` in the rules checks `request.auth.token.role == 'doctor'`, which can
@@ -173,6 +185,9 @@ privacy review.
 
 - 45 unit tests cover all provisional risk weights, category boundaries,
   red-flag overrides, unknown answers, catalogue integrity, and safety wording.
+- 14 tests cover addressed sharing: a record is visible only when it is both
+  switched on and names a recipient, including legacy rows written before
+  recipients existed.
 - A widget smoke test confirms that the entry screen renders both account paths.
 - GitHub Actions runs analysis and tests on every pull request and push to
   `main`.

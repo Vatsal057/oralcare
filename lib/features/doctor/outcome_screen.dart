@@ -72,8 +72,11 @@ class _OutcomeScreenState extends State<OutcomeScreen> {
   Future<void> _save() async {
     final assessmentId = widget.patientCase.assessment.id;
     if (assessmentId == null) {
-      showSnack(context, 'This record has no id and cannot be saved.',
-          isError: true);
+      showSnack(
+        context,
+        'This record has no id and cannot be saved.',
+        isError: true,
+      );
       return;
     }
 
@@ -141,7 +144,7 @@ class _OutcomeScreenState extends State<OutcomeScreen> {
     final result = widget.patientCase.assessment.result;
     final isFalseNegative =
         !widget.patientCase.appFlaggedForProfessionalCare &&
-            ((_opmd ?? false) || (_oscc ?? false));
+        ((_opmd ?? false) || (_oscc ?? false));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Clinical outcome')),

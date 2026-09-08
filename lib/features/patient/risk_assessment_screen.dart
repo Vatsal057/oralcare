@@ -52,8 +52,9 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     final flow = context.watch<AssessmentFlow>();
     final theme = Theme.of(context);
 
-    final ageBandOption =
-        RiskCatalog.ageBand.optionFor(RiskCatalog.ageBandForAge(flow.age));
+    final ageBandOption = RiskCatalog.ageBand.optionFor(
+      RiskCatalog.ageBandForAge(flow.age),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -82,10 +83,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
               icon: Icons.cake_outlined,
               subtitle: 'Taken from your profile and used as a risk factor.',
               children: [
-                DetailRow(
-                  label: 'Your age',
-                  value: '${flow.age} years',
-                ),
+                DetailRow(label: 'Your age', value: '${flow.age} years'),
                 DetailRow(
                   label: 'Age band',
                   value: ageBandOption?.label ?? '—',

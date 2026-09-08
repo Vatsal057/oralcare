@@ -164,20 +164,22 @@ class ValidationService {
       }
     }
 
-    final breakdowns = perCategory.entries.map((entry) {
-      final withOutcomeCount = entry.value
-          .where((c) => c.outcome?.isDiseasePositive != null)
-          .length;
-      final positives = entry.value
-          .where((c) => c.outcome?.isDiseasePositive == true)
-          .length;
-      return CategoryBreakdown(
-        category: entry.key,
-        assessments: entry.value.length,
-        withOutcome: withOutcomeCount,
-        diseasePositive: positives,
-      );
-    }).toList(growable: false);
+    final breakdowns = perCategory.entries
+        .map((entry) {
+          final withOutcomeCount = entry.value
+              .where((c) => c.outcome?.isDiseasePositive != null)
+              .length;
+          final positives = entry.value
+              .where((c) => c.outcome?.isDiseasePositive == true)
+              .length;
+          return CategoryBreakdown(
+            category: entry.key,
+            assessments: entry.value.length,
+            withOutcome: withOutcomeCount,
+            diseasePositive: positives,
+          );
+        })
+        .toList(growable: false);
 
     return ValidationSummary(
       totalSharedCases: cases.length,

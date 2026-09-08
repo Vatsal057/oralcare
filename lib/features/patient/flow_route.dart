@@ -12,9 +12,7 @@ import '../../state/assessment_flow.dart';
 /// intermediate route is popped.
 Route<T> flowRoute<T>(AssessmentFlow flow, Widget child) {
   return MaterialPageRoute<T>(
-    builder: (_) => ChangeNotifierProvider<AssessmentFlow>.value(
-      value: flow,
-      child: child,
-    ),
+    builder: (_) =>
+        ChangeNotifierProvider<AssessmentFlow>.value(value: flow, child: child),
   );
 }

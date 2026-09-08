@@ -73,9 +73,9 @@ class LesionDraft {
 /// all decided from the complete picture rather than screen by screen.
 class AssessmentFlow extends ChangeNotifier {
   AssessmentFlow({required this.patient})
-      : findings = ExamSiteCatalog.sites
-            .map((s) => ExamSiteFinding(siteKey: s.key))
-            .toList();
+    : findings = ExamSiteCatalog.sites
+          .map((s) => ExamSiteFinding(siteKey: s.key))
+          .toList();
 
   final AppUser patient;
 
@@ -155,9 +155,11 @@ class AssessmentFlow extends ChangeNotifier {
 
   void setSiteAbnormality(String siteKey, bool abnormality) {
     findings = findings
-        .map((f) => f.siteKey == siteKey
-            ? f.copyWith(examined: true, abnormality: abnormality)
-            : f)
+        .map(
+          (f) => f.siteKey == siteKey
+              ? f.copyWith(examined: true, abnormality: abnormality)
+              : f,
+        )
         .toList();
     notifyListeners();
   }
@@ -185,12 +187,12 @@ class AssessmentFlow extends ChangeNotifier {
 
   /// Runs the risk and safety engine over everything collected so far.
   RiskResult evaluate() => RiskEngine.evaluate(
-        age: age,
-        answers: answers,
-        redFlagKeys: redFlags,
-        lesionDurationDays: lesion.durationDays,
-        selfExamAbnormality: anySiteAbnormal,
-      );
+    age: age,
+    answers: answers,
+    redFlagKeys: redFlags,
+    lesionDurationDays: lesion.durationDays,
+    selfExamAbnormality: anySiteAbnormal,
+  );
 
   SelfExaminationRecord buildSelfExamination({int? assessmentId}) =>
       SelfExaminationRecord(

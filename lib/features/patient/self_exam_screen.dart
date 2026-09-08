@@ -26,7 +26,9 @@ class SelfExamScreen extends StatelessWidget {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(
-            value: 0.33 + (flow.sitesExamined / ExamSiteCatalog.sites.length) * 0.33,
+            value:
+                0.33 +
+                (flow.sitesExamined / ExamSiteCatalog.sites.length) * 0.33,
             minHeight: 4,
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
           ),
@@ -122,14 +124,14 @@ class _SiteCard extends StatelessWidget {
                   finding.abnormality
                       ? Icons.error_outline
                       : finding.examined
-                          ? Icons.check_circle_outline
-                          : Icons.radio_button_unchecked,
+                      ? Icons.check_circle_outline
+                      : Icons.radio_button_unchecked,
                   size: 20,
                   color: finding.abnormality
                       ? theme.colorScheme.error
                       : finding.examined
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.outline,
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.outline,
                 ),
                 const SizedBox(width: 8),
                 Text(

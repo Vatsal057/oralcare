@@ -7,7 +7,8 @@
 // deciding whether shared patient records may be read.
 //
 // Usage:
-//   node grant_doctor.mjs --username dr.smith --password 'Str0ngPass' --name 'Dr A Smith'
+//   node grant_doctor.mjs --username dr.smith --password 'Str0ngPass' \
+//     --name 'Dr A Smith' --clinic 'City Dental, Ahmedabad'
 //   node grant_doctor.mjs --username dr.smith            # existing account
 //   node grant_doctor.mjs --username dr.smith --revoke
 //
@@ -108,6 +109,8 @@ async function main() {
       { role: 'patient' },
       { merge: true },
     );
+    // Remove them from the directory so patients can no longer choose them.
+    await db.collection('doctors').doc(user.uid).delete();
     console.log(`Revoked clinician access for ${username} (${user.uid}).`);
     console.log('That account must sign in again; it no longer reads shared records.');
     return;
@@ -142,9 +145,24 @@ async function main() {
     { merge: true },
   );
 
+  // Public directory entry: this is what a patient picks from when choosing who
+  // to send a record to. Deliberately minimal — no patient data, no private
+  // contact details.
+  await db.collection('doctors').doc(user.uid).set(
+    {
+      username,
+      full_name: args.name ?? null,
+      clinic: args.clinic ?? null,
+      created_at: new Date().toISOString(),
+    },
+    { merge: true },
+  );
+
   console.log(
     `${created ? 'Created' : 'Updated'} clinician account ${username} (${user.uid}).`,
   );
+  console.log('Listed in the patient-facing directory as: ' +
+    `${args.name || username}${args.clinic ? ` · ${args.clinic}` : ''}`);
   console.log(`Sign in with username: ${username}`);
   console.log('If that account was already open in the app, sign out and in again.');
 }

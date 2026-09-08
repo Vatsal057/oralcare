@@ -11,7 +11,7 @@ import '../models/assessment_models.dart';
 /// restrict a patient to their own records.
 class AssessmentRepository {
   AssessmentRepository({FirebaseAuth? auth})
-      : _auth = auth ?? FirebaseAuth.instance;
+    : _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _auth;
 
@@ -45,27 +45,36 @@ class AssessmentRepository {
   Future<void> saveSelfExamination(SelfExaminationRecord record) async {
     final assessmentId = record.assessmentId;
     if (assessmentId == null) return;
-    await FirestoreRefs.assessment(assessmentId).set(
-      {FirestoreRefs.selfExamField: (record.toRow()..remove('id'))},
-      SetOptions(merge: true),
-    );
+    await FirestoreRefs.assessment(assessmentId).set({
+      FirestoreRefs.selfExamField: (record.toRow()..remove('id')),
+    }, SetOptions(merge: true));
   }
 
   Future<int> saveLesion(LesionRecord record) async {
     final assessmentId = record.assessmentId;
     final id = record.id ?? _newId();
     if (assessmentId == null) return id;
-    await FirestoreRefs.lesions(assessmentId)
-        .doc(id.toString())
-        .set(record.toRow()..remove('id'));
+    await FirestoreRefs.lesions(
+      assessmentId,
+    ).doc(id.toString()).set(record.toRow()..remove('id'));
     return id;
   }
 
-  /// Share-with-doctor consent gate (spec Table 1). The doctor interface only
-  /// ever queries records where this flag is set.
-  Future<void> setSharedWithDoctor(int assessmentId, bool shared) async {
-    await FirestoreRefs.assessment(assessmentId)
-        .update({'shared_with_doctor': shared ? 1 : 0});
+  /// Share-with-doctor consent gate (spec Table 1), addressed to one clinician.
+  ///
+  /// [doctorUid] is the clinician the patient chose. Sharing without a
+  /// recipient is meaningless, so switching sharing off also clears the
+  /// recipient: the record stops being readable by that clinician immediately.
+  Future<void> setSharing({
+    required int assessmentId,
+    required bool shared,
+    String? doctorUid,
+  }) async {
+    final addressed = shared && (doctorUid?.isNotEmpty ?? false);
+    await FirestoreRefs.assessment(assessmentId).update({
+      'shared_with_doctor': addressed ? 1 : 0,
+      'shared_with_uid': addressed ? doctorUid : null,
+    });
   }
 
   Future<void> setFollowUp({

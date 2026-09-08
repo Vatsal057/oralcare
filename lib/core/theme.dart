@@ -76,10 +76,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -99,9 +96,7 @@ class AppTheme {
         thickness: 1,
       ),
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -157,13 +152,12 @@ class RiskVisuals {
     }
   }
 
-  static RiskVisuals forCategory(RiskCategory category, Brightness brightness) =>
-      forState(
-        switch (category) {
-          RiskCategory.lower => PatientOutputState.lowerRisk,
-          RiskCategory.increased => PatientOutputState.increasedRisk,
-          RiskCategory.higher => PatientOutputState.higherRisk,
-        },
-        brightness,
-      );
+  static RiskVisuals forCategory(
+    RiskCategory category,
+    Brightness brightness,
+  ) => forState(switch (category) {
+    RiskCategory.lower => PatientOutputState.lowerRisk,
+    RiskCategory.increased => PatientOutputState.increasedRisk,
+    RiskCategory.higher => PatientOutputState.higherRisk,
+  }, brightness);
 }
