@@ -44,10 +44,18 @@ class _ShareWithDoctorCardState extends State<ShareWithDoctorCard> {
     super.initState();
     _shared = widget.initialShared;
     _selectedUid = widget.initialDoctorUid;
-    _loadDirectory();
+    _loadDirectory(initial: true);
   }
 
-  Future<void> _loadDirectory() async {
+  /// [initial] skips the reset, because the first load runs from initState where
+  /// there is no built frame to invalidate yet.
+  Future<void> _loadDirectory({bool initial = false}) async {
+    if (!initial) {
+      setState(() {
+        _doctors = null;
+        _loadError = null;
+      });
+    }
     try {
       final doctors = await context.read<DoctorDirectoryRepository>().all();
       if (!mounted) return;
@@ -142,6 +150,13 @@ class _ShareWithDoctorCardState extends State<ShareWithDoctorCard> {
       subtitle: consent
           ? 'You choose who sees this record. Only the doctor you pick can open it.'
           : 'You have not consented to share your record.',
+      trailing: consent
+          ? IconButton(
+              tooltip: 'Refresh the doctor list',
+              onPressed: doctors == null || _busy ? null : _loadDirectory,
+              icon: const Icon(Icons.refresh),
+            )
+          : null,
       children: [
         if (!consent)
           const NoticeBanner(
@@ -157,14 +172,23 @@ class _ShareWithDoctorCardState extends State<ShareWithDoctorCard> {
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Center(child: CircularProgressIndicator()),
           )
-        else if (doctors.isEmpty)
+        else if (doctors.isEmpty) ...[
           const NoticeBanner(
             message:
                 'No doctors are registered in this pilot yet. Once a clinician '
-                'is enrolled, you can send your record to them.',
+                'signs in, use refresh to see them here.',
             severity: NoticeSeverity.caution,
-          )
-        else ...[
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _loadDirectory,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Check again'),
+            ),
+          ),
+        ] else ...[
           DropdownButtonFormField<String>(
             initialValue: _selectedUid,
             isExpanded: true,

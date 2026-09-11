@@ -30,6 +30,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   bool _onlyUnreviewed = false;
   bool _onlyAlerts = false;
   bool _onlyMissedAttendance = false;
+  String? _error;
 
   @override
   void initState() {
@@ -38,13 +39,26 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
-    final cases = await context.read<ClinicalRepository>().queue();
-    if (!mounted) return;
     setState(() {
-      _cases = cases;
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
+    try {
+      final cases = await context.read<ClinicalRepository>().queue();
+      if (!mounted) return;
+      setState(() {
+        _cases = cases;
+        _loading = false;
+      });
+    } catch (e) {
+      // Without this, a rejected query left the queue silently empty, which is
+      // indistinguishable from "no patient has sent you anything".
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load the queue. $e';
+        _loading = false;
+      });
+    }
   }
 
   List<PatientCase> get _filtered => _cases
@@ -167,6 +181,26 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 40),
                   child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      NoticeBanner(
+                        title: 'The queue could not be loaded',
+                        message: _error!,
+                        severity: NoticeSeverity.alert,
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _load,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Try again'),
+                      ),
+                    ],
+                  ),
                 )
               else if (filtered.isEmpty)
                 Padding(

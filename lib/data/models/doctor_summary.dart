@@ -1,8 +1,8 @@
 /// A clinician as shown to a patient in the "send to" picker.
 ///
-/// This comes from the `doctors/{uid}` directory, which is written only by the
-/// Admin SDK provisioning script. It deliberately carries no patient data and no
-/// private contact details.
+/// This comes from the `doctors/{uid}` directory, written by the Admin SDK
+/// provisioning script or by the clinician's own registration and sign-in. It
+/// deliberately carries no patient data and no private contact details.
 class DoctorSummary {
   const DoctorSummary({
     required this.uid,

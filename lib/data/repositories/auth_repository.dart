@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../firestore_refs.dart';
@@ -223,7 +224,28 @@ class AuthRepository {
       );
     }
 
+    // Self-heal the clinician's public listing. An account created before the
+    // directory existed, or whose listing write failed, would otherwise be
+    // invisible to every patient and unable to receive any record.
+    if (user.isDoctor) await _ensureDoctorListing(user);
+
     return user;
+  }
+
+  /// Upserts the clinician's entry in the patient-facing directory.
+  ///
+  /// Merges only the identity fields, so a clinic name captured at registration
+  /// survives. Best-effort: a listing failure must not block a valid sign-in.
+  Future<void> _ensureDoctorListing(AppUser user) async {
+    try {
+      await FirestoreRefs.doctor(user.uid).set({
+        'username': user.username,
+        'full_name': user.fullName,
+        'created_at': user.createdAt.toIso8601String(),
+      }, SetOptions(merge: true));
+    } catch (_) {
+      // Ignored: the clinician can still work, and the next sign-in retries.
+    }
   }
 
   /// Persists the consent gates from spec Table 1.

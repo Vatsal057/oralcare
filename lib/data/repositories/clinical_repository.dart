@@ -31,14 +31,22 @@ class ClinicalRepository {
     final uid = _uid;
     if (uid == null) return const [];
 
+    // Both filters are required, not just the recipient. Firestore rules are
+    // not filters: a query is rejected outright unless it provably returns only
+    // documents the rules allow, and the read rule requires
+    // shared_with_doctor == 1 as well as shared_with_uid == my uid.
     final query = await FirestoreRefs.assessments()
+        .where('shared_with_doctor', isEqualTo: 1)
         .where('shared_with_uid', isEqualTo: uid)
         .get();
 
     final cases = <PatientCase>[];
     for (final doc in query.docs) {
       final assessment = _assessmentFromDoc(doc);
-      final built = await _buildCase(assessment);
+      final built = await _buildCase(
+        assessment,
+        ownerUid: doc.data()['owner_uid'] as String?,
+      );
       if (built == null) continue;
       if (onlyUnreviewed && built.isReviewed) continue;
       cases.add(built);
@@ -61,7 +69,10 @@ class ClinicalRepository {
     // Only the clinician the patient addressed the record to may open it.
     if (!assessment.isSharedWithSomeone) return null;
     if (assessment.sharedWithUid != _uid) return null;
-    return _buildCase(assessment);
+    return _buildCase(
+      assessment,
+      ownerUid: snapshot.data()?['owner_uid'] as String?,
+    );
   }
 
   /// Every consented case, for the validation screen (spec section 4).
@@ -97,11 +108,14 @@ class ClinicalRepository {
 
   // ---------------------------------------------------------------------------
 
-  Future<PatientCase?> _buildCase(RiskAssessmentRecord assessment) async {
+  Future<PatientCase?> _buildCase(
+    RiskAssessmentRecord assessment, {
+    String? ownerUid,
+  }) async {
     final id = assessment.id;
     if (id == null) return null;
 
-    final patient = await _patientFor(assessment.patientId);
+    final patient = await _patientFor(assessment.patientId, ownerUid: ownerUid);
     if (patient == null) return null;
 
     // Re-check share consent against the live user record, so a withdrawn
@@ -135,7 +149,21 @@ class ClinicalRepository {
     );
   }
 
-  Future<AppUser?> _patientFor(String patientId) async {
+  /// Loads the patient's profile.
+  ///
+  /// Prefers a direct document read by [ownerUid], which the assessment already
+  /// carries: a single-document read is unambiguously permitted by the rules and
+  /// avoids a collection query over `users`. Falls back to the Patient_ID query
+  /// for records written before `owner_uid` was stored.
+  Future<AppUser?> _patientFor(String patientId, {String? ownerUid}) async {
+    if (ownerUid != null && ownerUid.isNotEmpty) {
+      final snapshot = await FirestoreRefs.user(ownerUid).get();
+      final data = snapshot.data();
+      if (snapshot.exists && data != null) {
+        return AppUser.fromFirestore(snapshot.id, data);
+      }
+    }
+
     final query = await FirestoreRefs.users()
         .where('patient_id', isEqualTo: patientId)
         .limit(1)

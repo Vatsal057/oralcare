@@ -1,4 +1,13 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "assessments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "shared_with_doctor", "order": "ASCENDING" },
+        { "fieldPath": "shared_with_uid", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }
