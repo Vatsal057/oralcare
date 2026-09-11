@@ -49,11 +49,18 @@ firebase deploy --only firestore:rules
 
 ## Provisioning clinician accounts
 
-Clinician access is a **server-set Firebase Auth custom claim**
-(`role: "doctor"`). The app cannot create a doctor account, and a user cannot
-grant themselves the role: `isDoctor()` in `firestore.rules` reads the claim
-only, and the rules refuse any client write that sets `role: "doctor"` on a
-profile without it.
+There are two ways to create a clinician in this pilot.
+
+**In-app enrolment code (pilot convenience).** The Doctor login offers *Create a
+new doctor account*, which asks for the enrolment code held in
+`AuthRepository.doctorEnrolmentCode`. This needs no Admin credentials. It is also
+the weak path: the code ships inside the app bundle, so anyone who reads it can
+self-assign the clinician role. Use it for demos, not for real patient data.
+
+**Server-set custom claim (recommended).** The script below sets a Firebase Auth
+custom claim that a client cannot forge. `isDoctor()` in `firestore.rules`
+accepts the claim or the profile field today; for a real deployment, remove the
+profile-field branch so the claim is the only route.
 
 Setting a claim requires Admin SDK credentials. Use either an
 Application Default Credentials login or a service-account key:
@@ -99,9 +106,9 @@ Never commit the service-account key. `.gitignore` already excludes
 
 ## Production prerequisites
 
-Server-verified clinician identity is in place, but it is not the whole of a
-production posture. Before storing real patient data: verify each clinician
-against a professional register before running the script, add audit logging of
-clinician reads, validate clinical content with the clinical team, define data
-retention and deletion, and complete institutional ethical, legal, privacy and
-incident-response reviews.
+Before storing real patient data: remove the in-app enrolment-code path and the
+profile-field branch of `isDoctor()`, make the `doctors` directory admin-only,
+verify each clinician against a professional register before provisioning, add
+audit logging of clinician reads, validate clinical content with the clinical
+team, define data retention and deletion, and complete institutional ethical,
+legal, privacy and incident-response reviews.

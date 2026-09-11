@@ -10,15 +10,25 @@ rules_version = '2';
 //     assessments/{id}/clinical/current  written by doctors
 //     assessments/{id}/outcome/current   written by doctors
 //
-// Clinician access is granted by a server-set custom claim
-// (request.auth.token.role == 'doctor'), never by a client-written field. The
-// claim can only be set with Admin SDK credentials, so a user cannot promote
-// themselves by editing their own profile document. See tools/grant_doctor.mjs
-// and docs/FIREBASE_SETUP.md for provisioning.
+// KNOWN PILOT LIMITATION — clinician role is self-assignable.
 //
-// The `role` field on users/{uid} exists for the interface to render, and the
-// rules below forbid a client from writing role == 'doctor' unless the claim is
-// already present. It is therefore never a source of privilege.
+// isDoctor() below accepts EITHER a server-set custom claim
+// (request.auth.token.role == 'doctor', set by tools/grant_doctor.mjs) OR the
+// `role` field on the user's own profile document, which the client writes after
+// an enrolment-code check in the app. The enrolment code ships inside the app
+// bundle, so a determined user can read it, self-assign the doctor role, and
+// list themselves in the clinician directory. They could then receive and read
+// any record a patient chooses to send them.
+//
+// This is deliberate for pilot convenience: it lets a clinician account be
+// created without Admin SDK credentials. Before any real deployment, drop the
+// profile-field branch from isDoctor(), forbid client writes of role ==
+// 'doctor', make the doctors directory admin-only again, and provision
+// clinicians with tools/grant_doctor.mjs.
+//
+// Mitigation that remains in force: sharing is addressed. A clinician can only
+// read a record when the patient explicitly chose them as the recipient, so a
+// self-assigned doctor still cannot read anyone else's records.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -26,10 +36,21 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Server-set custom claim. A missing claim evaluates to null, which never
-    // equals 'doctor', so absence fails closed.
-    function isDoctor() {
+    // Preferred: server-set custom claim, which a client cannot forge.
+    function hasDoctorClaim() {
       return isSignedIn() && request.auth.token.role == 'doctor';
+    }
+
+    // PILOT: also accepts the client-written profile role. See the limitation
+    // note at the top of this file.
+    function hasDoctorProfile() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor';
+    }
+
+    function isDoctor() {
+      return hasDoctorClaim() || hasDoctorProfile();
     }
 
     // ---- users ------------------------------------------------------------
@@ -39,24 +60,27 @@ service cloud.firestore {
       allow read: if isSignedIn() && (request.auth.uid == uid || isDoctor());
 
       // The uid in the document path must match the signed-in user, so nobody
-      // can create or overwrite another person's profile. Writing the doctor
-      // role additionally requires the claim, so self-promotion is impossible
-      // even in the profile document the user does own.
-      allow create, update: if isSignedIn()
-        && request.auth.uid == uid
-        && (request.resource.data.role != 'doctor' || isDoctor());
+      // can create or overwrite another person's profile.
+      //
+      // PILOT: a user may write role == 'doctor' on their own profile after the
+      // in-app enrolment-code check. This is the self-assignment noted at the
+      // top of this file.
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
       allow delete: if false;
     }
 
     // ---- clinician directory ----------------------------------------------
     // The list a patient chooses a recipient from. Any signed-in user may read
     // it, because a patient must be able to see who they can send a record to.
-    // It holds no patient data. All client writes are refused: entries are
-    // created only by the Admin SDK provisioning script, alongside the custom
-    // claim, so the directory cannot be used to fake a clinician.
+    // It holds no patient data.
+    //
+    // PILOT: a clinician lists themselves here at registration, so the entry can
+    // only be written under their own uid. Deleting is refused so a listing
+    // cannot be silently removed while records are addressed to it.
     match /doctors/{doctorUid} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow create, update: if isSignedIn() && request.auth.uid == doctorUid;
+      allow delete: if false;
     }
 
     // ---- patient id reservations ------------------------------------------

@@ -316,6 +316,11 @@ class _DoctorReviewCard extends StatelessWidget {
           ),
           DetailRow(label: 'Centre', value: review.referralCentre ?? '—'),
           DetailRow(label: 'Date', value: AppFormats.d(review.referralDate)),
+          if (review.patientArrived)
+            DetailRow(
+              label: 'You attended',
+              value: AppFormats.d(review.patientArrivedDate),
+            ),
         ],
         if (review.followUpDate != null)
           DetailRow(
@@ -323,6 +328,15 @@ class _DoctorReviewCard extends StatelessWidget {
             value: AppFormats.d(review.followUpDate),
             emphasise: true,
           ),
+        if (review.patientInstructions != null &&
+            review.patientInstructions!.trim().isNotEmpty) ...[
+          const SizedBox(height: 12),
+          NoticeBanner(
+            title: 'What your doctor asked you to do',
+            message: review.patientInstructions!.trim(),
+            severity: NoticeSeverity.caution,
+          ),
+        ],
         const SizedBox(height: 10),
         const NoticeBanner(
           message:

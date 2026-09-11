@@ -26,18 +26,25 @@ class ClinicalAssessmentScreen extends StatefulWidget {
 }
 
 class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
+  final _medicalHistory = TextEditingController();
   final _description = TextEditingController();
   final _size = TextEditingController();
   final _impression = TextEditingController();
   final _referralCentre = TextEditingController();
+  final _instructions = TextEditingController();
   final _followUpStatus = TextEditingController();
 
   bool? _examinationPerformed;
   bool? _lesionPresent;
   bool? _investigationRequired;
   bool? _biopsyRequired;
+  bool? _patientInformedByText;
+  DateTime? _patientInformedDate;
   bool? _referralRequired;
   DateTime? _referralDate;
+  DateTime? _patientArrivedDate;
+  bool? _patientRemindedByText;
+  DateTime? _patientReminderDate;
   DateTime? _followUpDate;
 
   bool _saving = false;
@@ -48,6 +55,7 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
     final existing = widget.patientCase.clinicianAssessment;
     if (existing == null) return;
 
+    _medicalHistory.text = existing.relevantMedicalHistory ?? '';
     _examinationPerformed = existing.examinationPerformed;
     _lesionPresent = existing.lesionPresent;
     _description.text = existing.lesionDescription ?? '';
@@ -55,19 +63,27 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
     _impression.text = existing.clinicalImpression ?? '';
     _investigationRequired = existing.investigationRequired;
     _biopsyRequired = existing.biopsyRequired;
+    _patientInformedByText = existing.patientInformedByText;
+    _patientInformedDate = existing.patientInformedDate;
     _referralRequired = existing.referralRequired;
     _referralCentre.text = existing.referralCentre ?? '';
     _referralDate = existing.referralDate;
+    _patientArrivedDate = existing.patientArrivedDate;
+    _patientRemindedByText = existing.patientRemindedByText;
+    _patientReminderDate = existing.patientReminderDate;
+    _instructions.text = existing.patientInstructions ?? '';
     _followUpDate = existing.followUpDate;
     _followUpStatus.text = existing.followUpStatus ?? '';
   }
 
   @override
   void dispose() {
+    _medicalHistory.dispose();
     _description.dispose();
     _size.dispose();
     _impression.dispose();
     _referralCentre.dispose();
+    _instructions.dispose();
     _followUpStatus.dispose();
     super.dispose();
   }
@@ -111,6 +127,7 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
       patientId: widget.patientCase.patientId,
       doctorUsername: doctor.username,
       updatedAt: DateTime.now(),
+      relevantMedicalHistory: _nullIfEmpty(_medicalHistory.text),
       examinationPerformed: _examinationPerformed,
       lesionPresent: _lesionPresent,
       lesionDescription: _nullIfEmpty(_description.text),
@@ -118,9 +135,15 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
       clinicalImpression: _nullIfEmpty(_impression.text),
       investigationRequired: _investigationRequired,
       biopsyRequired: _biopsyRequired,
+      patientInformedByText: _patientInformedByText,
+      patientInformedDate: _patientInformedDate,
       referralRequired: _referralRequired,
       referralCentre: _nullIfEmpty(_referralCentre.text),
       referralDate: _referralDate,
+      patientArrivedDate: _patientArrivedDate,
+      patientRemindedByText: _patientRemindedByText,
+      patientReminderDate: _patientReminderDate,
+      patientInstructions: _nullIfEmpty(_instructions.text),
       followUpDate: _followUpDate,
       followUpStatus: _nullIfEmpty(_followUpStatus.text),
     );
@@ -177,6 +200,27 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
                   : NoticeSeverity.info,
             ),
             const SizedBox(height: 16),
+
+            SectionCard(
+              title: 'Relevant medical history',
+              icon: Icons.history_outlined,
+              subtitle:
+                  'Comorbidity, medication, or anything the structured risk '
+                  'factors do not capture.',
+              children: [
+                TextField(
+                  controller: _medicalHistory,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Medical history',
+                    hintText:
+                        'e.g. diabetes, immunosuppression, anticoagulants, '
+                        'previous radiotherapy',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
 
             SectionCard(
               title: 'Examination',
@@ -277,6 +321,74 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 6),
+                YesNoField(
+                  label: 'Patient informed by text to attend a centre',
+                  value: _patientInformedByText,
+                  onChanged: (v) => setState(() {
+                    _patientInformedByText = v;
+                    // Stamp the date on first confirmation, so the record shows
+                    // when the instruction actually went out.
+                    if (v == true) _patientInformedDate ??= DateTime.now();
+                  }),
+                ),
+                if (_patientInformedByText == true) ...[
+                  const SizedBox(height: 10),
+                  _DateField(
+                    label: 'Date informed',
+                    value: _patientInformedDate,
+                    onTap: () => _pickDate(
+                      current: _patientInformedDate,
+                      helpText: 'Date the patient was informed',
+                      onPicked: (d) => setState(() => _patientInformedDate = d),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            _AttendanceCard(
+              referralRequired: _referralRequired,
+              referralDate: _referralDate,
+              arrivedDate: _patientArrivedDate,
+              remindedByText: _patientRemindedByText,
+              reminderDate: _patientReminderDate,
+              onPickArrived: () => _pickDate(
+                current: _patientArrivedDate,
+                helpText: 'Date the patient arrived',
+                onPicked: (d) => setState(() => _patientArrivedDate = d),
+              ),
+              onClearArrived: () => setState(() => _patientArrivedDate = null),
+              onRemindedChanged: (v) => setState(() {
+                _patientRemindedByText = v;
+                if (v == true) _patientReminderDate ??= DateTime.now();
+              }),
+              onPickReminder: () => _pickDate(
+                current: _patientReminderDate,
+                helpText: 'Date the reminder was sent',
+                onPicked: (d) => setState(() => _patientReminderDate = d),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            SectionCard(
+              title: 'Instructions for the patient',
+              icon: Icons.mark_email_read_outlined,
+              subtitle:
+                  'Shown to the patient in their own record. Keep it plain and '
+                  'actionable.',
+              children: [
+                TextField(
+                  controller: _instructions,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Referral and follow-up instructions',
+                    hintText:
+                        'e.g. Attend City Dental on 20 Sep, bring this record, '
+                        'do not use tobacco before the appointment.',
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -320,6 +432,98 @@ class _ClinicalAssessmentScreenState extends State<ClinicalAssessmentScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Attendance at the referral centre (clinical module spec section 5).
+///
+/// "Failed to arrive within two weeks" is computed from the referral date rather
+/// than typed, so it cannot contradict the dates on the record.
+class _AttendanceCard extends StatelessWidget {
+  const _AttendanceCard({
+    required this.referralRequired,
+    required this.referralDate,
+    required this.arrivedDate,
+    required this.remindedByText,
+    required this.reminderDate,
+    required this.onPickArrived,
+    required this.onClearArrived,
+    required this.onRemindedChanged,
+    required this.onPickReminder,
+  });
+
+  final bool? referralRequired;
+  final DateTime? referralDate;
+  final DateTime? arrivedDate;
+  final bool? remindedByText;
+  final DateTime? reminderDate;
+  final VoidCallback onPickArrived;
+  final VoidCallback onClearArrived;
+  final ValueChanged<bool?> onRemindedChanged;
+  final VoidCallback onPickReminder;
+
+  @override
+  Widget build(BuildContext context) {
+    // Mirror the model's rule so the clinician sees the same conclusion the
+    // record will store.
+    final due = referralDate?.add(
+      const Duration(days: ClinicianAssessmentRecord.attendanceWindowDays),
+    );
+    final overdue =
+        referralRequired == true &&
+        due != null &&
+        arrivedDate == null &&
+        !DateTime.now().isBefore(due);
+
+    return SectionCard(
+      title: 'Attendance at the centre',
+      icon: Icons.how_to_reg_outlined,
+      subtitle: referralRequired == true
+          ? (due == null
+                ? 'Record a referral date to track the two-week window.'
+                : 'Expected by ${AppFormats.d(due)}.')
+          : 'Only applies once a referral has been made.',
+      children: [
+        _DateField(
+          label: 'Patient arrived (date)',
+          value: arrivedDate,
+          onTap: onPickArrived,
+        ),
+        if (arrivedDate != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: onClearArrived,
+              icon: const Icon(Icons.undo, size: 18),
+              label: const Text('Clear arrival'),
+            ),
+          ),
+        if (overdue) ...[
+          const SizedBox(height: 10),
+          const NoticeBanner(
+            title: 'Failed to arrive within two weeks',
+            message:
+                'The two-week window has passed with no recorded arrival. '
+                'Send a reminder and record it below.',
+            severity: NoticeSeverity.alert,
+          ),
+        ],
+        const SizedBox(height: 6),
+        YesNoField(
+          label: 'Patient reminded by text',
+          value: remindedByText,
+          onChanged: onRemindedChanged,
+        ),
+        if (remindedByText == true) ...[
+          const SizedBox(height: 10),
+          _DateField(
+            label: 'Date reminded',
+            value: reminderDate,
+            onTap: onPickReminder,
+          ),
+        ],
+      ],
     );
   }
 }

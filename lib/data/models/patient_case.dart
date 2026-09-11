@@ -37,11 +37,24 @@ class PatientCase {
 
   bool get hasReferenceOutcome => outcome?.hasReferenceOutcome ?? false;
 
-  /// Queue priority: overrides first, then higher risk, then the rest.
+  /// Referred, but the two-week attendance window has passed with no arrival
+  /// (spec section 5).
+  bool failedToAttend({DateTime? now}) =>
+      clinicianAssessment?.failedToArriveWithinTwoWeeks(now: now) ?? false;
+
+  /// A non-attendance nobody has chased yet. This is the state that needs a
+  /// human to act, so the queue surfaces it.
+  bool needsAttendanceChase({DateTime? now}) =>
+      clinicianAssessment?.needsAttendanceReminder(now: now) ?? false;
+
+  /// Queue priority: unchased non-attendance first, because a referred patient
+  /// who never arrived is the most likely to be lost to follow-up. Then app
+  /// overrides, then referral alerts, then the rest.
   int get queuePriority {
-    if (assessment.result.professionalCheckRequired) return 0;
-    if (assessment.result.referralAlert) return 1;
-    return 2;
+    if (needsAttendanceChase()) return 0;
+    if (assessment.result.professionalCheckRequired) return 1;
+    if (assessment.result.referralAlert) return 2;
+    return 3;
   }
 
   /// What the app recommended: did it flag this person for professional care?

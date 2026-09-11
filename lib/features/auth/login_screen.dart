@@ -143,28 +143,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       : const Text('Sign in'),
                 ),
                 const SizedBox(height: 12),
-                if (_isDoctor)
-                  const NoticeBanner(
-                    title: 'Clinician accounts are issued, not self-created',
-                    message:
-                        'Clinician access is granted by the pilot coordinator '
-                        'after your professional identity is checked. Contact '
-                        'them to have an account provisioned.',
-                    severity: NoticeSeverity.info,
-                  )
-                else
-                  OutlinedButton(
-                    onPressed: _busy
-                        ? null
-                        : () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => RegisterScreen(role: widget.role),
-                            ),
+                OutlinedButton(
+                  onPressed: _busy
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RegisterScreen(role: widget.role),
                           ),
-                    child: Text(
-                      'Create a new ${widget.role.label.toLowerCase()} account',
-                    ),
+                        ),
+                  child: Text(
+                    'Create a new ${widget.role.label.toLowerCase()} account',
                   ),
+                ),
                 const SizedBox(height: 24),
                 NoticeBanner(
                   message: _isDoctor

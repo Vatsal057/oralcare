@@ -25,6 +25,7 @@ class OutcomeScreen extends StatefulWidget {
 
 class _OutcomeScreenState extends State<OutcomeScreen> {
   final _histopathology = TextEditingController();
+  final _investigationReports = TextEditingController();
   final _finalDiagnosis = TextEditingController();
 
   bool? _professionalExamination;
@@ -55,6 +56,7 @@ class _OutcomeScreenState extends State<OutcomeScreen> {
     _clinicalAbnormality = existing.clinicalAbnormality;
     _biopsyPerformed = existing.biopsyPerformed;
     _histopathology.text = existing.histopathologyResult ?? '';
+    _investigationReports.text = existing.investigationReports ?? '';
     _finalDiagnosis.text = existing.finalDiagnosis ?? '';
     _opmd = existing.opmd;
     _oscc = existing.oscc;
@@ -65,6 +67,7 @@ class _OutcomeScreenState extends State<OutcomeScreen> {
   @override
   void dispose() {
     _histopathology.dispose();
+    _investigationReports.dispose();
     _finalDiagnosis.dispose();
     super.dispose();
   }
@@ -92,6 +95,7 @@ class _OutcomeScreenState extends State<OutcomeScreen> {
       clinicalAbnormality: _clinicalAbnormality,
       biopsyPerformed: _biopsyPerformed,
       histopathologyResult: _nullIfEmpty(_histopathology.text),
+      investigationReports: _nullIfEmpty(_investigationReports.text),
       finalDiagnosis: _nullIfEmpty(_finalDiagnosis.text),
       opmd: _opmd,
       oscc: _oscc,
@@ -200,6 +204,16 @@ class _OutcomeScreenState extends State<OutcomeScreen> {
                     hintText:
                         'e.g. hyperkeratosis, mild/moderate/severe dysplasia, '
                         'carcinoma in situ, squamous cell carcinoma',
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _investigationReports,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Investigation and imaging reports',
+                    hintText:
+                        'e.g. OPG, CT/MRI, ultrasound neck, FNAC findings',
                   ),
                 ),
                 const SizedBox(height: 14),

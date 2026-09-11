@@ -43,15 +43,7 @@ class SessionController extends ChangeNotifier {
         _user = await _auth.findByUid(uid);
         // A Firebase user with no profile document is unusable; sign it out so
         // the app lands cleanly on the login screen.
-        if (_user == null) {
-          await _auth.signOut();
-        } else if (_user!.isDoctor && !await _auth.hasDoctorClaim()) {
-          // Clinician access is authorised by the server-set claim only. A
-          // restored profile that claims the role without it (for example after
-          // access was revoked) must not reopen the clinician interface.
-          await _auth.signOut();
-          _user = null;
-        }
+        if (_user == null) await _auth.signOut();
       }
     } catch (_) {
       _user = null;

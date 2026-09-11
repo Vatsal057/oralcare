@@ -9,6 +9,7 @@ class ClinicianAssessmentRecord {
     required this.patientId,
     required this.doctorUsername,
     required this.updatedAt,
+    this.relevantMedicalHistory,
     this.examinationPerformed,
     this.lesionPresent,
     this.lesionDescription,
@@ -16,12 +17,23 @@ class ClinicianAssessmentRecord {
     this.clinicalImpression,
     this.investigationRequired,
     this.biopsyRequired,
+    this.patientInformedByText,
+    this.patientInformedDate,
     this.referralRequired,
     this.referralCentre,
     this.referralDate,
+    this.patientArrivedDate,
+    this.patientRemindedByText,
+    this.patientReminderDate,
+    this.patientInstructions,
     this.followUpDate,
     this.followUpStatus,
   });
+
+  /// Days a patient has to attend after a referral before the case is flagged
+  /// as a non-attendance (clinical module spec section 5, "failed to arrive
+  /// within two weeks"). Matches the two-week rule used by the risk engine.
+  static const int attendanceWindowDays = 14;
 
   final int? id;
 
@@ -33,6 +45,10 @@ class ClinicianAssessmentRecord {
 
   final String doctorUsername;
   final DateTime updatedAt;
+
+  /// "Relevant medical history" (spec section 1) — free text, because the
+  /// structured risk factors cannot capture comorbidity or medication.
+  final String? relevantMedicalHistory;
 
   /// "Clinical examination performed Yes/No"
   final bool? examinationPerformed;
@@ -54,10 +70,26 @@ class ClinicianAssessmentRecord {
   /// "Biopsy required Yes/No"
   final bool? biopsyRequired;
 
+  /// "Patient informed by text reply to attend a centre" (spec section 3).
+  ///
+  /// This records that the clinician sent the instruction and when. The app does
+  /// not send SMS itself; there is no messaging gateway in this pilot.
+  final bool? patientInformedByText;
+  final DateTime? patientInformedDate;
+
   /// "Referral required, centre and date"
   final bool? referralRequired;
   final String? referralCentre;
   final DateTime? referralDate;
+
+  /// Section 5: attendance at the centre.
+  final DateTime? patientArrivedDate;
+  final bool? patientRemindedByText;
+  final DateTime? patientReminderDate;
+
+  /// Referral and follow-up instructions written for the patient to read in
+  /// their own record (spec section 8).
+  final String? patientInstructions;
 
   /// "Follow-up date/status"
   final DateTime? followUpDate;
@@ -67,9 +99,34 @@ class ClinicianAssessmentRecord {
   /// examination was performed.
   bool get isReviewed => examinationPerformed != null;
 
+  /// True once the patient has attended the centre.
+  bool get patientArrived => patientArrivedDate != null;
+
+  /// The date by which the patient was expected to attend, or null when no
+  /// referral date has been recorded.
+  DateTime? get attendanceDueBy =>
+      referralDate?.add(const Duration(days: attendanceWindowDays));
+
+  /// "Patient failed to arrive within two weeks" (spec section 5).
+  ///
+  /// Derived rather than stored, so it cannot go stale: a referral was made, the
+  /// two-week window has passed, and no arrival has been recorded. [now] is
+  /// injectable so the rule is testable.
+  bool failedToArriveWithinTwoWeeks({DateTime? now}) {
+    if (referralRequired != true) return false;
+    final due = attendanceDueBy;
+    if (due == null || patientArrived) return false;
+    return !(now ?? DateTime.now()).isBefore(due);
+  }
+
+  /// A non-attendance that has not yet been chased.
+  bool needsAttendanceReminder({DateTime? now}) =>
+      failedToArriveWithinTwoWeeks(now: now) && patientRemindedByText != true;
+
   ClinicianAssessmentRecord copyWith({
     int? id,
     DateTime? updatedAt,
+    String? relevantMedicalHistory,
     bool? examinationPerformed,
     bool? lesionPresent,
     String? lesionDescription,
@@ -77,9 +134,15 @@ class ClinicianAssessmentRecord {
     String? clinicalImpression,
     bool? investigationRequired,
     bool? biopsyRequired,
+    bool? patientInformedByText,
+    DateTime? patientInformedDate,
     bool? referralRequired,
     String? referralCentre,
     DateTime? referralDate,
+    DateTime? patientArrivedDate,
+    bool? patientRemindedByText,
+    DateTime? patientReminderDate,
+    String? patientInstructions,
     DateTime? followUpDate,
     String? followUpStatus,
   }) => ClinicianAssessmentRecord(
@@ -88,6 +151,8 @@ class ClinicianAssessmentRecord {
     patientId: patientId,
     doctorUsername: doctorUsername,
     updatedAt: updatedAt ?? this.updatedAt,
+    relevantMedicalHistory:
+        relevantMedicalHistory ?? this.relevantMedicalHistory,
     examinationPerformed: examinationPerformed ?? this.examinationPerformed,
     lesionPresent: lesionPresent ?? this.lesionPresent,
     lesionDescription: lesionDescription ?? this.lesionDescription,
@@ -95,9 +160,15 @@ class ClinicianAssessmentRecord {
     clinicalImpression: clinicalImpression ?? this.clinicalImpression,
     investigationRequired: investigationRequired ?? this.investigationRequired,
     biopsyRequired: biopsyRequired ?? this.biopsyRequired,
+    patientInformedByText: patientInformedByText ?? this.patientInformedByText,
+    patientInformedDate: patientInformedDate ?? this.patientInformedDate,
     referralRequired: referralRequired ?? this.referralRequired,
     referralCentre: referralCentre ?? this.referralCentre,
     referralDate: referralDate ?? this.referralDate,
+    patientArrivedDate: patientArrivedDate ?? this.patientArrivedDate,
+    patientRemindedByText: patientRemindedByText ?? this.patientRemindedByText,
+    patientReminderDate: patientReminderDate ?? this.patientReminderDate,
+    patientInstructions: patientInstructions ?? this.patientInstructions,
     followUpDate: followUpDate ?? this.followUpDate,
     followUpStatus: followUpStatus ?? this.followUpStatus,
   );
@@ -108,6 +179,7 @@ class ClinicianAssessmentRecord {
     'patient_id': patientId,
     'doctor_username': doctorUsername,
     'updated_at': updatedAt.toIso8601String(),
+    'relevant_medical_history': relevantMedicalHistory,
     'examination_performed': _b(examinationPerformed),
     'lesion_present': _b(lesionPresent),
     'lesion_description': lesionDescription,
@@ -115,9 +187,15 @@ class ClinicianAssessmentRecord {
     'clinical_impression': clinicalImpression,
     'investigation_required': _b(investigationRequired),
     'biopsy_required': _b(biopsyRequired),
+    'patient_informed_by_text': _b(patientInformedByText),
+    'patient_informed_date': patientInformedDate?.toIso8601String(),
     'referral_required': _b(referralRequired),
     'referral_centre': referralCentre,
     'referral_date': referralDate?.toIso8601String(),
+    'patient_arrived_date': patientArrivedDate?.toIso8601String(),
+    'patient_reminded_by_text': _b(patientRemindedByText),
+    'patient_reminder_date': patientReminderDate?.toIso8601String(),
+    'patient_instructions': patientInstructions,
     'follow_up_date': followUpDate?.toIso8601String(),
     'follow_up_status': followUpStatus,
   };
@@ -131,6 +209,7 @@ class ClinicianAssessmentRecord {
         updatedAt:
             DateTime.tryParse(row['updated_at'] as String? ?? '') ??
             DateTime.now(),
+        relevantMedicalHistory: row['relevant_medical_history'] as String?,
         examinationPerformed: _nb(row['examination_performed']),
         lesionPresent: _nb(row['lesion_present']),
         lesionDescription: row['lesion_description'] as String?,
@@ -138,9 +217,21 @@ class ClinicianAssessmentRecord {
         clinicalImpression: row['clinical_impression'] as String?,
         investigationRequired: _nb(row['investigation_required']),
         biopsyRequired: _nb(row['biopsy_required']),
+        patientInformedByText: _nb(row['patient_informed_by_text']),
+        patientInformedDate: DateTime.tryParse(
+          row['patient_informed_date'] as String? ?? '',
+        ),
         referralRequired: _nb(row['referral_required']),
         referralCentre: row['referral_centre'] as String?,
         referralDate: DateTime.tryParse(row['referral_date'] as String? ?? ''),
+        patientArrivedDate: DateTime.tryParse(
+          row['patient_arrived_date'] as String? ?? '',
+        ),
+        patientRemindedByText: _nb(row['patient_reminded_by_text']),
+        patientReminderDate: DateTime.tryParse(
+          row['patient_reminder_date'] as String? ?? '',
+        ),
+        patientInstructions: row['patient_instructions'] as String?,
         followUpDate: DateTime.tryParse(row['follow_up_date'] as String? ?? ''),
         followUpStatus: row['follow_up_status'] as String?,
       );
@@ -161,6 +252,7 @@ class OutcomeRecord {
     this.clinicalAbnormality,
     this.biopsyPerformed,
     this.histopathologyResult,
+    this.investigationReports,
     this.finalDiagnosis,
     this.opmd,
     this.oscc,
@@ -185,6 +277,10 @@ class OutcomeRecord {
 
   /// Histopathology_result — reference outcome where available.
   final String? histopathologyResult;
+
+  /// "Relevant investigation/imaging reports" (spec section 6). Free text: the
+  /// pilot records findings, not uploaded files.
+  final String? investigationReports;
 
   /// Final_diagnosis — the clinical endpoint.
   final String? finalDiagnosis;
@@ -219,6 +315,7 @@ class OutcomeRecord {
     bool? clinicalAbnormality,
     bool? biopsyPerformed,
     String? histopathologyResult,
+    String? investigationReports,
     String? finalDiagnosis,
     bool? opmd,
     bool? oscc,
@@ -235,6 +332,7 @@ class OutcomeRecord {
     clinicalAbnormality: clinicalAbnormality ?? this.clinicalAbnormality,
     biopsyPerformed: biopsyPerformed ?? this.biopsyPerformed,
     histopathologyResult: histopathologyResult ?? this.histopathologyResult,
+    investigationReports: investigationReports ?? this.investigationReports,
     finalDiagnosis: finalDiagnosis ?? this.finalDiagnosis,
     opmd: opmd ?? this.opmd,
     oscc: oscc ?? this.oscc,
@@ -252,6 +350,7 @@ class OutcomeRecord {
     'clinical_abnormality': _b(clinicalAbnormality),
     'biopsy_performed': _b(biopsyPerformed),
     'histopathology_result': histopathologyResult,
+    'investigation_reports': investigationReports,
     'final_diagnosis': finalDiagnosis,
     'opmd': _b(opmd),
     'oscc': _b(oscc),
@@ -270,6 +369,7 @@ class OutcomeRecord {
     clinicalAbnormality: _nb(row['clinical_abnormality']),
     biopsyPerformed: _nb(row['biopsy_performed']),
     histopathologyResult: row['histopathology_result'] as String?,
+    investigationReports: row['investigation_reports'] as String?,
     finalDiagnosis: row['final_diagnosis'] as String?,
     opmd: _nb(row['opmd']),
     oscc: _nb(row['oscc']),

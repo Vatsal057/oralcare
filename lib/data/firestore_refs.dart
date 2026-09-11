@@ -42,6 +42,9 @@ class FirestoreRefs {
   static CollectionReference<Map<String, dynamic>> doctors() =>
       db.collection(doctorsCollection);
 
+  static DocumentReference<Map<String, dynamic>> doctor(String uid) =>
+      doctors().doc(uid);
+
   /// Uniqueness reservation for a human-readable Patient_ID.
   ///
   /// A patient cannot query the whole `users` collection (that would expose

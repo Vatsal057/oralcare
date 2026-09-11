@@ -29,12 +29,21 @@ class AuthRepository {
 
   /// Custom-claim key and value that grant clinician access.
   ///
-  /// The claim is set only by `tools/grant_doctor.mjs` using Admin SDK
-  /// credentials, and the Firestore rules authorise clinician reads on the claim
-  /// alone. The app therefore cannot create a doctor account, and a user cannot
-  /// promote themselves.
+  /// `tools/grant_doctor.mjs` still sets this, and it remains the recommended
+  /// way to create a clinician. It is no longer *required*, because the pilot
+  /// also allows enrolment-code registration below.
   static const String _roleClaim = 'role';
   static const String _doctorClaimValue = 'doctor';
+
+  /// Enrolment code required to create a Doctor account.
+  ///
+  /// PILOT ONLY. This is checked on the client and ships inside the app bundle,
+  /// so a determined user can read it and self-assign the doctor role. A doctor
+  /// account can then read any record a patient chooses to send it. For a real
+  /// deployment, delete this path and provision clinicians with
+  /// `tools/grant_doctor.mjs`, which sets a server-side custom claim, and key
+  /// the security rules off that claim.
+  static const String doctorEnrolmentCode = 'ORAL-PILOT-2026';
 
   String _emailForUsername(String username) =>
       '${username.trim().toLowerCase()}@$_emailDomain';
@@ -111,6 +120,51 @@ class AuthRepository {
     }
   }
 
+  /// Creates a clinician account after an enrolment-code check.
+  ///
+  /// PILOT ONLY — see [doctorEnrolmentCode]. This also publishes the clinician
+  /// to the `doctors` directory, because a clinician who is not listed there
+  /// cannot be chosen by any patient and would have an unusable account.
+  Future<AppUser> registerDoctor({
+    required String username,
+    required String password,
+    required String enrolmentCode,
+    String? fullName,
+    String? clinic,
+  }) async {
+    _validateCredentials(username, password);
+
+    if (enrolmentCode.trim() != doctorEnrolmentCode) {
+      throw const AuthException(
+        'That clinic enrolment code is not valid. Contact the pilot '
+        'coordinator to obtain one.',
+      );
+    }
+
+    final credential = await _createAuthUser(username, password);
+    final uid = credential.user!.uid;
+
+    final user = AppUser(
+      uid: uid,
+      username: username.trim(),
+      role: UserRole.doctor,
+      fullName: fullName?.trim(),
+      createdAt: DateTime.now(),
+    );
+
+    await _runOrRollBack(credential, () async {
+      await FirestoreRefs.user(uid).set(user.toFirestore());
+      await FirestoreRefs.doctor(uid).set({
+        'username': user.username,
+        'full_name': user.fullName,
+        'clinic': (clinic?.trim().isEmpty ?? true) ? null : clinic!.trim(),
+        'created_at': user.createdAt.toIso8601String(),
+      });
+    });
+
+    return user;
+  }
+
   /// True when the signed-in account carries the server-set clinician claim.
   ///
   /// [forceRefresh] fetches a new ID token, which is required immediately after
@@ -166,18 +220,6 @@ class AuthRepository {
       throw AuthException(
         'This account is registered as a ${user.role.label.toLowerCase()}. '
         'Please use the ${user.role.label} login.',
-      );
-    }
-
-    if (expectedRole == UserRole.doctor &&
-        !await hasDoctorClaim(forceRefresh: true)) {
-      // The profile says doctor but the server has not granted the claim, so
-      // every clinician read would be denied. Refuse the session outright
-      // instead of opening an interface that cannot load anything.
-      await _auth.signOut();
-      throw const AuthException(
-        'This account is not approved for clinician access. The pilot '
-        'coordinator must provision it before you can sign in.',
       );
     }
 

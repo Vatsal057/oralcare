@@ -29,6 +29,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   bool _loading = true;
   bool _onlyUnreviewed = false;
   bool _onlyAlerts = false;
+  bool _onlyMissedAttendance = false;
 
   @override
   void initState() {
@@ -50,6 +51,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       .where((c) {
         if (_onlyUnreviewed && c.isReviewed) return false;
         if (_onlyAlerts && !c.assessment.result.referralAlert) return false;
+        if (_onlyMissedAttendance && !c.failedToAttend()) return false;
         return true;
       })
       .toList(growable: false);
@@ -64,6 +66,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         .where((c) => c.assessment.result.referralAlert)
         .length;
     final unreviewedCount = _cases.where((c) => !c.isReviewed).length;
+    final missedCount = _cases.where((c) => c.needsAttendanceChase()).length;
     final filtered = _filtered;
 
     return Scaffold(
@@ -124,6 +127,15 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                       icon: Icons.pending_actions_outlined,
                     ),
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatTile(
+                      label: 'Did not attend',
+                      value: '$missedCount',
+                      icon: Icons.person_off_outlined,
+                      emphasise: missedCount > 0,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -140,6 +152,12 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     label: const Text('Not yet reviewed'),
                     selected: _onlyUnreviewed,
                     onSelected: (v) => setState(() => _onlyUnreviewed = v),
+                  ),
+                  FilterChip(
+                    label: const Text('Did not attend'),
+                    selected: _onlyMissedAttendance,
+                    onSelected: (v) =>
+                        setState(() => _onlyMissedAttendance = v),
                   ),
                 ],
               ),
@@ -281,7 +299,15 @@ class _QueueCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (result.professionalCheckRequired)
+                  // A referred patient who never arrived is the easiest to lose,
+                  // so it outranks the risk badges.
+                  if (patientCase.failedToAttend())
+                    _Badge(
+                      label: 'DID NOT ATTEND',
+                      background: theme.colorScheme.error,
+                      foreground: theme.colorScheme.onError,
+                    )
+                  else if (result.professionalCheckRequired)
                     _Badge(
                       label: 'OVERRIDE',
                       background: theme.colorScheme.error,

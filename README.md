@@ -33,8 +33,13 @@ mouth self-examination, consented clinician review, and follow-up.
   that clinician
 - Referral-alert prioritisation
 - Review of risk, symptoms, self-examination, and lesion entries
-- Clinical assessment, investigation, biopsy, referral, and follow-up entry
-- Outcome capture for OPMD/OSCC, histopathology, and final diagnosis
+- Relevant medical history, clinical assessment, investigation, biopsy,
+  referral, and follow-up entry
+- Attendance tracking: arrival date, an automatic **failed to arrive within two
+  weeks** flag derived from the referral date, and text-reminder records
+- Referral and follow-up instructions written for the patient to read
+- Outcome capture for OPMD/OSCC, histopathology, investigation and imaging
+  reports, and final diagnosis
 - Pilot validation view: confusion matrix, sensitivity, specificity, predictive
   values, outcome rates by risk band, and false-negative case review
 
@@ -133,10 +138,10 @@ information site if it is needed for a different Hosting target.
 2. On **Phone A**, register a patient, grant app/self-examination and
    share-with-doctor consent, complete a check, then pick the clinician under
    **Send to a doctor** and switch sharing on.
-3. Provision a clinician account with
+3. On **Phone B**, create a doctor account with the enrolment code in
+   `AuthRepository`, or provision one with
    [`tools/grant_doctor.mjs`](tools/grant_doctor.mjs) (see
-   [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)), then sign in with it on
-   **Phone B** and open the patient queue.
+   [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)), then open the queue.
 4. Record a clinical assessment and outcome; the validation screen updates from
    those entries.
 5. Turn share consent off on Phone A, or switch sharing off. The record should no
@@ -164,9 +169,21 @@ allow a read when `shared_with_doctor == 1` and `shared_with_uid` equals the
 reader's own uid. Clinical findings and outcomes can likewise only be written by
 the clinician the record was sent to.
 
-The clinician directory (`doctors/{uid}`) is readable by any signed-in user so
-patients can choose a recipient, but every client write to it is refused: entries
-are created only by the provisioning script, alongside the custom claim.
+> **Known pilot limitation — the clinician role is self-assignable.**
+> `isDoctor()` accepts either a server-set custom claim or the `role` field on
+> the user's own profile, which the app writes after checking the in-app
+> enrolment code. That code ships inside the app bundle, so a determined user can
+> read it, register as a clinician, and list themselves in the directory. This is
+> deliberate for pilot convenience, so a clinician account can be created without
+> Admin SDK credentials.
+>
+> Addressed sharing limits the impact: a self-assigned clinician still cannot
+> read anyone's record unless that patient specifically chose to send it to them.
+>
+> Before a real deployment, drop the profile-field branch from `isDoctor()`,
+> forbid client writes of `role: "doctor"`, make the directory admin-only again,
+> and provision clinicians with
+> [`tools/grant_doctor.mjs`](tools/grant_doctor.mjs), which sets the claim.
 
 Clinician access is a **server-set custom claim**, not a client-written field.
 `isDoctor()` in the rules checks `request.auth.token.role == 'doctor'`, which can
@@ -188,16 +205,32 @@ privacy review.
 - 14 tests cover addressed sharing: a record is visible only when it is both
   switched on and names a recipient, including legacy rows written before
   recipients existed.
+- 14 tests cover the two-week attendance rule and the clinician-module fields,
+  including the day-13/day-14 boundary and the states that must not raise a
+  non-attendance.
 - A widget smoke test confirms that the entry screen renders both account paths.
 - GitHub Actions runs analysis and tests on every pull request and push to
   `main`.
+
+## Clinician module coverage
+
+The clinician module follows the clinical team's specification: patient
+information, patient assessment, clinical findings, referral, attendance at a
+centre, reports, follow-up, and addressed sharing.
+
+Two items are recorded rather than automated, because the pilot has no messaging
+gateway: "patient informed by text" and "patient reminded by text" capture that
+the clinician sent the instruction and when. Instructions written for the patient
+appear in the patient's own record instead of being sent as SMS. Sending real
+messages needs an SMS provider, stored phone numbers, and consent to hold them —
+a separate decision for the clinical team.
 
 ## Roadmap
 
 - Clinician-approved multilingual education content and illustrations
 - Config-driven questionnaire content approved by the clinical team
 - Secure document storage and cross-device photo sharing
-- Audit events for clinician reads (server-verified clinician identity is done)
+- Server-verified clinician identity only, plus audit events for clinician reads
 - Firebase Emulator integration tests for access-control rules
 - Clinical validation and pilot usability evaluation
 

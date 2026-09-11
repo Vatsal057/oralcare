@@ -434,6 +434,51 @@ class _ClinicianSummaryCard extends StatelessWidget {
             DetailRow(label: 'Date', value: AppFormats.d(review.referralDate)),
           ],
           DetailRow(
+            label: 'Informed by text',
+            value: AppFormats.yesNo(review.patientInformedByText),
+          ),
+          if (review.patientInformedByText == true)
+            DetailRow(
+              label: 'Date informed',
+              value: AppFormats.d(review.patientInformedDate),
+            ),
+          if (review.referralRequired == true) ...[
+            DetailRow(
+              label: 'Patient arrived',
+              value: review.patientArrived
+                  ? AppFormats.d(review.patientArrivedDate)
+                  : 'Not recorded',
+              emphasise: review.patientArrived,
+            ),
+            if (review.failedToArriveWithinTwoWeeks())
+              const DetailRow(
+                label: 'Attendance',
+                value: 'Failed to arrive within two weeks',
+                emphasise: true,
+              ),
+            DetailRow(
+              label: 'Reminded by text',
+              value: AppFormats.yesNo(review.patientRemindedByText),
+            ),
+            if (review.patientRemindedByText == true)
+              DetailRow(
+                label: 'Date reminded',
+                value: AppFormats.d(review.patientReminderDate),
+              ),
+          ],
+          if (review.relevantMedicalHistory != null &&
+              review.relevantMedicalHistory!.isNotEmpty)
+            DetailRow(
+              label: 'Medical history',
+              value: review.relevantMedicalHistory!,
+            ),
+          if (review.patientInstructions != null &&
+              review.patientInstructions!.isNotEmpty)
+            DetailRow(
+              label: 'Patient instructions',
+              value: review.patientInstructions!,
+            ),
+          DetailRow(
             label: 'Follow-up',
             value: AppFormats.d(review.followUpDate),
           ),
