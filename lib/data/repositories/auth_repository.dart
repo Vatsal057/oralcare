@@ -57,6 +57,15 @@ class AuthRepository {
     String? fullName,
     required int age,
     required String gender,
+    String? phone,
+    String? email,
+    String? city,
+    String? pincode,
+    String? medicalHistory,
+    String? allergies,
+    String? currentMedications,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
   }) async {
     _validateCredentials(username, password);
     if (gender.trim().isEmpty) {
@@ -80,6 +89,15 @@ class AuthRepository {
       fullName: fullName?.trim(),
       age: age,
       gender: gender.trim(),
+      phone: _clean(phone),
+      email: _clean(email),
+      city: _clean(city),
+      pincode: _clean(pincode),
+      medicalHistory: _clean(medicalHistory),
+      allergies: _clean(allergies),
+      currentMedications: _clean(currentMedications),
+      emergencyContactName: _clean(emergencyContactName),
+      emergencyContactPhone: _clean(emergencyContactPhone),
       createdAt: DateTime.now(),
     );
 
@@ -250,6 +268,66 @@ class AuthRepository {
     } catch (_) {
       // Ignored: the clinician can still work, and the next sign-in retries.
     }
+  }
+
+  /// Trims a form value and treats blank input as "not provided".
+  static String? _clean(String? value) {
+    final trimmed = value?.trim();
+    return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  /// Updates the Section 1 profile fields for an existing account.
+  ///
+  /// Age and gender are required at registration, so they are updatable here but
+  /// never clearable. Everything else may be blanked by the patient.
+  Future<AppUser> updateProfile(
+    AppUser user, {
+    String? fullName,
+    int? age,
+    String? gender,
+    String? phone,
+    String? email,
+    String? city,
+    String? pincode,
+    String? medicalHistory,
+    String? allergies,
+    String? currentMedications,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+  }) async {
+    if (age != null && (age < 0 || age > 120)) {
+      throw const AuthException('Please enter an age between 0 and 120.');
+    }
+    if (gender != null && gender.trim().isEmpty) {
+      throw const AuthException('Please select your gender.');
+    }
+
+    final updated = AppUser(
+      uid: user.uid,
+      username: user.username,
+      role: user.role,
+      patientId: user.patientId,
+      fullName: _clean(fullName) ?? user.fullName,
+      age: age ?? user.age,
+      gender: _clean(gender) ?? user.gender,
+      phone: _clean(phone),
+      email: _clean(email),
+      city: _clean(city),
+      pincode: _clean(pincode),
+      medicalHistory: _clean(medicalHistory),
+      allergies: _clean(allergies),
+      currentMedications: _clean(currentMedications),
+      emergencyContactName: _clean(emergencyContactName),
+      emergencyContactPhone: _clean(emergencyContactPhone),
+      isGuest: user.isGuest,
+      consent: user.consent,
+      createdAt: user.createdAt,
+    );
+
+    await FirestoreRefs.user(
+      user.uid,
+    ).set(updated.toFirestore(), SetOptions(merge: true));
+    return updated;
   }
 
   /// Persists the consent gates from spec Table 1.

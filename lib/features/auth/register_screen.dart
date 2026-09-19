@@ -28,6 +28,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _age = TextEditingController();
   final _enrolmentCode = TextEditingController();
   final _clinic = TextEditingController();
+  final _phone = TextEditingController();
+  final _city = TextEditingController();
+  final _medicalHistory = TextEditingController();
+  final _emergencyName = TextEditingController();
+  final _emergencyPhone = TextEditingController();
 
   String? _gender;
   bool _busy = false;
@@ -42,6 +47,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool get _isDoctor => widget.role == UserRole.doctor;
 
+  /// Blank is allowed; anything entered must look like a usable number.
+  String? _optionalPhone(String? value) {
+    final digits = (value ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return null;
+    return digits.length >= 10 ? null : 'Enter at least 10 digits.';
+  }
+
   @override
   void dispose() {
     _username.dispose();
@@ -52,6 +64,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _age.dispose();
     _enrolmentCode.dispose();
     _clinic.dispose();
+    _phone.dispose();
+    _city.dispose();
+    _medicalHistory.dispose();
+    _emergencyName.dispose();
+    _emergencyPhone.dispose();
     super.dispose();
   }
 
@@ -81,6 +98,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               fullName: _fullName.text,
               age: int.parse(_age.text.trim()),
               gender: _gender ?? '',
+              phone: _phone.text,
+              city: _city.text,
+              medicalHistory: _medicalHistory.text,
+              emergencyContactName: _emergencyName.text,
+              emergencyContactPhone: _emergencyPhone.text,
             );
 
       session.adopt(user);
@@ -280,6 +302,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     onChanged: (value) => setState(() => _gender = value),
                     validator: (v) =>
                         (v == null || v.isEmpty) ? 'Select your gender.' : null,
+                  ),
+
+                  const SizedBox(height: 24),
+                  Text(
+                    'Contact and emergency details',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Optional now — you can add or change these any time under '
+                    'My profile.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _phone,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Mobile number',
+                      helperText: 'So a centre can reach you about a referral.',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
+                    validator: _optionalPhone,
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _city,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Town or city',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _medicalHistory,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Relevant medical history',
+                      hintText: 'e.g. diabetes, previous radiotherapy',
+                      prefixIcon: Icon(Icons.medical_information_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _emergencyName,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Emergency contact name',
+                      prefixIcon: Icon(Icons.emergency_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _emergencyPhone,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Emergency contact number',
+                      prefixIcon: Icon(Icons.phone_in_talk_outlined),
+                    ),
+                    validator: _optionalPhone,
                   ),
                 ],
 

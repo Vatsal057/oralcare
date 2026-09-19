@@ -14,6 +14,13 @@ extension CenterTypeX on CenterType {
     CenterType.oralMedicineOmfs => 'Oral Medicine & OMFS Dept',
     CenterType.communityScreening => 'Community Health Centre',
   };
+
+  String get storageValue => name;
+
+  static CenterType fromStorage(String? value) => CenterType.values.firstWhere(
+    (t) => t.name == value,
+    orElse: () => CenterType.dentalInstitute,
+  );
 }
 
 class ScreeningCenter {
@@ -38,6 +45,35 @@ class ScreeningCenter {
   final String phone;
   final String timings;
   final List<String> services;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'name': name,
+    'type': type.storageValue,
+    'city': city,
+    'state': state,
+    'address': address,
+    'phone': phone,
+    'timings': timings,
+    'services': services,
+  };
+
+  /// Reads a centre published to the `screening_centers` collection, so contact
+  /// details can be corrected without shipping a new app version.
+  factory ScreeningCenter.fromJson(Map<String, Object?> json) =>
+      ScreeningCenter(
+        id: json['id'] as String? ?? '',
+        name: json['name'] as String? ?? 'Unnamed centre',
+        type: CenterTypeX.fromStorage(json['type'] as String?),
+        city: json['city'] as String? ?? '',
+        state: json['state'] as String? ?? '',
+        address: json['address'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        timings: json['timings'] as String? ?? '',
+        services:
+            (json['services'] as List?)?.map((s) => s.toString()).toList() ??
+            const [],
+      );
 }
 
 class ScreeningCentersCatalog {

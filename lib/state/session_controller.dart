@@ -96,6 +96,45 @@ class SessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Saves the Section 1 profile fields and keeps the session in step.
+  Future<void> updateProfile({
+    String? fullName,
+    int? age,
+    String? gender,
+    String? phone,
+    String? email,
+    String? city,
+    String? pincode,
+    String? medicalHistory,
+    String? allergies,
+    String? currentMedications,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+  }) async {
+    final current = requireUser;
+    if (current.isGuest) {
+      throw const AuthException(
+        'Guest mode cannot save a profile. Create an account first.',
+      );
+    }
+    _user = await _auth.updateProfile(
+      current,
+      fullName: fullName,
+      age: age,
+      gender: gender,
+      phone: phone,
+      email: email,
+      city: city,
+      pincode: pincode,
+      medicalHistory: medicalHistory,
+      allergies: allergies,
+      currentMedications: currentMedications,
+      emergencyContactName: emergencyContactName,
+      emergencyContactPhone: emergencyContactPhone,
+    );
+    notifyListeners();
+  }
+
   Future<void> updateConsent(ConsentFlags consent) async {
     final current = requireUser;
     _user = await _auth.updateConsent(current, consent);

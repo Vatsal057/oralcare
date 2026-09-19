@@ -75,13 +75,26 @@ service cloud.firestore {
     // write was denied, silently caught, and kept only in memory — so uploaded
     // reports and quit plans were lost when the app closed.
     //
-    // Owner-only. Sharing a stored record with a clinician is not wired up yet;
-    // when it is, add a doctor-read branch keyed on the record's is_shared flag.
+    // Quit plans stay private to the patient. Stored documents may be shared
+    // with a clinician, one document at a time, by the patient.
+    // The patient owns these. A clinician may read only the documents the
+    // patient has marked as shared, which is why the doctor-side query must
+    // filter on is_shared == 1: rules are not filters, so an unfiltered query
+    // would be rejected outright.
     match /users/{uid}/digilocker_records/{recordId} {
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isSignedIn()
+        && (request.auth.uid == uid
+            || (isDoctor() && resource.data.is_shared == 1));
+      allow write: if isSignedIn() && request.auth.uid == uid;
     }
 
     match /users/{uid}/cessation/{docId} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // The patient's own saved visits (Section F). Nothing is sent to a centre,
+    // so this is private to the patient.
+    match /users/{uid}/appointments/{appointmentId} {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
 
@@ -97,6 +110,16 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn() && request.auth.uid == doctorUid;
       allow delete: if false;
+    }
+
+    // ---- screening centre directory ---------------------------------------
+    // Public reference data: names, addresses, phone numbers and timings. Any
+    // signed-in user may read it, because this is how a patient finds care.
+    // Client writes are refused — details must be curated and verified, so they
+    // are published with tools/seed_centers.mjs using Admin credentials.
+    match /screening_centers/{centerId} {
+      allow read: if isSignedIn();
+      allow write: if false;
     }
 
     // ---- patient id reservations ------------------------------------------

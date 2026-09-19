@@ -104,6 +104,50 @@ back in to pick up the new token.
 Never commit the service-account key. `.gitignore` already excludes
 `service-account*.json`, `*-service-account*.json` and `tools/node_modules/`.
 
+## Publishing the screening-centre directory
+
+The app reads screening centres from the `screening_centers` collection and only
+falls back to the list compiled into the binary, telling the patient when it has
+done so. Publishing verified entries therefore corrects a wrong phone number for
+every user without shipping a release.
+
+```bash
+cd tools
+npm install
+
+# inspect what is currently published
+node seed_centers.mjs --project YOUR_PROJECT_ID --list
+
+# publish a verified list
+node seed_centers.mjs --project YOUR_PROJECT_ID --file centers.json
+```
+
+`centers.json` is an array of centres. `id`, `name`, `type`, `city`, `state`,
+`address`, `phone` and `timings` are required; `type` must be one of
+`dentalInstitute`, `oncologyCentre`, `oralMedicineOmfs`, `communityScreening`.
+Set `verifiedOn` to the date you confirmed the details by phone — the script
+warns about any entry without it.
+
+```json
+[
+  {
+    "id": "cids_coorg",
+    "name": "Coorg Institute of Dental Sciences",
+    "type": "dentalInstitute",
+    "city": "Virajpet",
+    "state": "Karnataka",
+    "address": "K.K. Campus, Maggula Village, Virajpet 571218",
+    "phone": "+91 8274 256479",
+    "timings": "Monday – Saturday: 9:00 AM – 4:00 PM",
+    "services": ["Biopsy", "Oral Medicine OPD", "Tobacco cessation"],
+    "verifiedOn": "2026-09-19"
+  }
+]
+```
+
+The rules make this collection readable by any signed-in user and refuse all
+client writes, so it can only be curated with Admin credentials.
+
 ## Production prerequisites
 
 Before storing real patient data: remove the in-app enrolment-code path and the

@@ -68,6 +68,55 @@ void main() {
     });
   });
 
+  group('Section 1 profile fields', () {
+    test('contact, medical and emergency details round trip', () {
+      final original = AppUser(
+        uid: 'u1',
+        username: 'divya',
+        role: UserRole.patient,
+        patientId: 'OC-2026-ABC123',
+        age: 47,
+        gender: 'Female',
+        phone: '9876543210',
+        email: 'divya@example.com',
+        city: 'Virajpet',
+        pincode: '571218',
+        medicalHistory: 'Type 2 diabetes',
+        allergies: 'Penicillin',
+        currentMedications: 'Metformin 500mg',
+        emergencyContactName: 'Ravi',
+        emergencyContactPhone: '9876500000',
+        createdAt: DateTime(2026, 9, 19),
+      );
+
+      final restored = AppUser.fromFirestore('u1', original.toFirestore());
+
+      expect(restored.phone, '9876543210');
+      expect(restored.email, 'divya@example.com');
+      expect(restored.city, 'Virajpet');
+      expect(restored.pincode, '571218');
+      expect(restored.medicalHistory, 'Type 2 diabetes');
+      expect(restored.allergies, 'Penicillin');
+      expect(restored.currentMedications, 'Metformin 500mg');
+      expect(restored.emergencyContactName, 'Ravi');
+      expect(restored.emergencyContactPhone, '9876500000');
+    });
+
+    test(
+      'unset optional details stay null rather than becoming empty text',
+      () {
+        final restored = AppUser.fromFirestore(
+          'u1',
+          user(age: 30, gender: 'Male').toFirestore(),
+        );
+
+        expect(restored.phone, isNull);
+        expect(restored.emergencyContactPhone, isNull);
+        expect(restored.allergies, isNull);
+      },
+    );
+  });
+
   group('every offered gender option persists', () {
     for (final value in const [
       'Female',

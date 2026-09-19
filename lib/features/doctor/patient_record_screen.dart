@@ -8,6 +8,8 @@ import '../../data/models/assessment_models.dart';
 import '../../data/models/patient_case.dart';
 import '../../data/photo_store.dart';
 import '../../data/repositories/clinical_repository.dart';
+import '../../data/repositories/digilocker_repository.dart';
+import '../../domain/records/digilocker_models.dart';
 import '../../domain/risk_catalog.dart';
 import '../../domain/risk_engine.dart';
 import 'clinical_assessment_screen.dart';
@@ -28,10 +30,33 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
   late PatientCase _case;
   bool _loading = false;
 
+  List<DigiLockerRecord> _sharedDocuments = const [];
+  String? _documentsError;
+
   @override
   void initState() {
     super.initState();
     _case = widget.patientCase;
+    _loadSharedDocuments();
+  }
+
+  /// Documents the patient chose to share. A failure here is surfaced rather
+  /// than hidden: a clinician must be able to tell "nothing shared" apart from
+  /// "could not load".
+  Future<void> _loadSharedDocuments() async {
+    try {
+      final docs = await context
+          .read<DigiLockerRepository>()
+          .sharedRecordsForUid(_case.patient.uid);
+      if (!mounted) return;
+      setState(() {
+        _sharedDocuments = docs;
+        _documentsError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _documentsError = 'Could not load shared documents. $e');
+    }
   }
 
   Future<void> _reload() async {
@@ -244,6 +269,36 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
               ),
               const SizedBox(height: 14),
             ],
+
+            // ---- Patient-shared documents -----------------------------------
+            SectionCard(
+              title: 'Documents shared by the patient',
+              icon: Icons.folder_shared_outlined,
+              subtitle: _documentsError == null
+                  ? 'Only items the patient marked as shared are listed.'
+                  : null,
+              children: [
+                if (_documentsError != null)
+                  NoticeBanner(
+                    message: _documentsError!,
+                    severity: NoticeSeverity.alert,
+                  )
+                else if (_sharedDocuments.isEmpty)
+                  const NoticeBanner(
+                    message: 'The patient has not shared any documents.',
+                  )
+                else
+                  for (final doc in _sharedDocuments)
+                    DetailRow(
+                      label: doc.category.label,
+                      value:
+                          '${doc.title} · ${AppFormats.d(doc.documentDate)}'
+                          '${doc.facilityOrDoctor.isEmpty ? '' : ' · ${doc.facilityOrDoctor}'}'
+                          '${doc.notes == null || doc.notes!.isEmpty ? '' : '\n${doc.notes}'}',
+                    ),
+              ],
+            ),
+            const SizedBox(height: 14),
 
             // ---- Clinician entry --------------------------------------------
             _ClinicianSummaryCard(

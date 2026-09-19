@@ -26,6 +26,12 @@ mouth self-examination, consented clinician review, and follow-up.
 - Action-focused results: lower risk, increased risk, higher risk, monitor and
   review, or **professional check required**
 - Follow-up reminders and a patient view of referral/follow-up logistics
+- Profile and medical background: contact details, location, medical history,
+  allergies, current medications, and an emergency contact, editable under
+  **My profile**
+- Education, habit-change support, personal records, screening-centre directory,
+  rehabilitation guidance, and emergency guidance
+- Saved visits to a centre, with the phone number kept to hand
 
 ### Clinician experience
 
@@ -40,8 +46,13 @@ mouth self-examination, consented clinician review, and follow-up.
 - Referral and follow-up instructions written for the patient to read
 - Outcome capture for OPMD/OSCC, histopathology, investigation and imaging
   reports, and final diagnosis
+- Documents the patient chose to share, listed on the record
 - Pilot validation view: confusion matrix, sensitivity, specificity, predictive
   values, outcome rates by risk band, and false-negative case review
+
+> Validation figures cover **only** the records addressed to the signed-in
+> clinician, not the whole pilot cohort. With more than one clinician enrolled,
+> each sees a partial picture.
 
 ## Safety model
 
@@ -208,6 +219,14 @@ privacy review.
 - 14 tests cover the two-week attendance rule and the clinician-module fields,
   including the day-13/day-14 boundary and the states that must not raise a
   non-attendance.
+- 11 tests cover gender storage and the Section 1 profile fields, including the
+  fallback that keeps the value of accounts written before `sex` was renamed.
+- 7 tests cover the screening-centre directory, including the offline fallback
+  that must never leave a patient with an empty list.
+- 11 tests cover the CareConnect modules: education catalogue, personal records,
+  cessation maths, referral letter, rehabilitation protocols, and guest mode.
+
+`flutter test` currently runs **102** tests.
 - A widget smoke test confirms that the entry screen renders both account paths.
 - GitHub Actions runs analysis and tests on every pull request and push to
   `main`.
@@ -224,6 +243,25 @@ the clinician sent the instruction and when. Instructions written for the patien
 appear in the patient's own record instead of being sent as SMS. Sending real
 messages needs an SMS provider, stored phone numbers, and consent to hold them —
 a separate decision for the clinical team.
+
+## Known limits of this build
+
+Read these before demonstrating the app:
+
+- **The app cannot book appointments.** Saving a visit stores a reminder in the
+  patient's own record and shows the centre's number. Nothing is sent to the
+  centre, and the wording says so.
+- **Screening-centre details must be verified.** The app prefers the
+  `screening_centers` Firestore collection and falls back to the copy built into
+  the binary, warning the patient when it does. Publish verified entries with
+  [`tools/seed_centers.mjs`](tools/seed_centers.mjs).
+- **No notifications.** Reminders appear inside the app only; nothing reaches a
+  patient who does not open it.
+- **Translations cover education content only** (English, Hindi, Kannada). The
+  rest of the interface is English.
+- **Photographs stay on the capturing device.** Firebase Storage is not
+  configured, so a clinician on another device cannot see them.
+- **Guest mode is not persisted.** Nothing a guest enters is saved.
 
 ## Roadmap
 

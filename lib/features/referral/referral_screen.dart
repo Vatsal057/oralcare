@@ -4,7 +4,10 @@ import 'package:provider/provider.dart';
 
 import '../../core/widgets/common.dart';
 import '../../data/models/assessment_models.dart';
+import '../../data/repositories/appointment_repository.dart';
 import '../../data/repositories/assessment_repository.dart';
+import '../../data/repositories/screening_center_repository.dart';
+import '../../domain/referral/appointment_request.dart';
 import '../../domain/referral/screening_centers_catalog.dart';
 import '../../state/session_controller.dart';
 
@@ -18,6 +21,9 @@ class ReferralScreen extends StatefulWidget {
 class _ReferralScreenState extends State<ReferralScreen> {
   CenterType? _selectedType;
   String _selectedCity = 'All';
+  List<AppointmentRequest> _appointments = const [];
+  List<ScreeningCenter> _centers = ScreeningCentersCatalog.centers;
+  bool _centersAreBundled = true;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -27,12 +33,59 @@ class _ReferralScreenState extends State<ReferralScreen> {
   void initState() {
     super.initState();
     _loadLatestAssessment();
+    _loadAppointments();
+    _loadCenters();
+  }
+
+  Future<void> _loadCenters() async {
+    final result = await context.read<ScreeningCenterRepository>().load();
+    if (!mounted) return;
+    setState(() {
+      _centers = result.centers;
+      _centersAreBundled = result.isBundled;
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAppointments() async {
+    final user = context.read<SessionController>().user;
+    try {
+      final list = await context.read<AppointmentRepository>().listForPatient(
+        user?.patientId ?? 'GUEST',
+      );
+      if (!mounted) return;
+      setState(() => _appointments = list);
+    } catch (_) {
+      // A failure here must not blank the directory, which is the main content.
+      if (!mounted) return;
+      setState(() => _appointments = const []);
+    }
+  }
+
+  Future<void> _setAppointmentStatus(
+    AppointmentRequest request,
+    AppointmentStatus status,
+  ) async {
+    try {
+      await context.read<AppointmentRepository>().updateStatus(request, status);
+      await _loadAppointments();
+    } catch (e) {
+      if (mounted) showSnack(context, 'Could not update. $e', isError: true);
+    }
+  }
+
+  Future<void> _deleteAppointment(AppointmentRequest request) async {
+    try {
+      await context.read<AppointmentRepository>().delete(request);
+      await _loadAppointments();
+    } catch (e) {
+      if (mounted) showSnack(context, 'Could not remove. $e', isError: true);
+    }
   }
 
   Future<void> _loadLatestAssessment() async {
@@ -112,6 +165,51 @@ class _ReferralScreenState extends State<ReferralScreen> {
     );
   }
 
+  /// Saves the patient's intention to attend, then tells them plainly that they
+  /// still have to ring the centre. The app has no booking integration, so any
+  /// wording implying the centre was notified would be false and could lead
+  /// someone to wait for a call that never comes.
+  Future<void> _saveAppointment(
+    ScreeningCenter center,
+    DateTime date,
+    String slot,
+  ) async {
+    final session = context.read<SessionController>();
+    final repo = context.read<AppointmentRepository>();
+    final user = session.user;
+
+    final request = AppointmentRequest(
+      id: 'apt_${DateTime.now().microsecondsSinceEpoch}',
+      patientId: user?.patientId ?? 'GUEST',
+      centerId: center.id,
+      centerName: center.name,
+      centerPhone: center.phone,
+      centerCity: center.city,
+      requestedDate: date,
+      slot: slot,
+      createdAt: DateTime.now(),
+    );
+
+    try {
+      await repo.save(request);
+      if (!mounted) return;
+      await _loadAppointments();
+      if (!mounted) return;
+      showSnack(
+        context,
+        repo.canPersist
+            ? 'Saved to your record for ${AppFormats.d(date)}. '
+                  'Now call ${center.phone} to confirm — the centre has not '
+                  'been contacted automatically.'
+            : 'Saved for this session only. Create an account to keep it, and '
+                  'call ${center.phone} to confirm.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showSnack(context, 'Could not save the request. $e', isError: true);
+    }
+  }
+
   void _bookAppointmentModal(ScreeningCenter center) {
     DateTime selectedDate = DateTime.now().add(const Duration(days: 2));
     String slot = 'Morning (9:00 AM – 12:00 PM)';
@@ -120,7 +218,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text('Request Appointment at ${center.name}'),
+          title: Text('Plan a visit to ${center.name}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,6 +229,13 @@ class _ReferralScreenState extends State<ReferralScreen> {
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.primary,
                 ),
+              ),
+              const SizedBox(height: 10),
+              const NoticeBanner(
+                message:
+                    'This saves a reminder for you. The app cannot book for '
+                    'you — you still need to phone the centre.',
+                severity: NoticeSeverity.caution,
               ),
               const SizedBox(height: 12),
               ListTile(
@@ -178,17 +283,122 @@ class _ReferralScreenState extends State<ReferralScreen> {
             FilledButton(
               onPressed: () {
                 Navigator.pop(ctx);
-                showSnack(
-                  context,
-                  'Appointment request sent for ${AppFormats.d(selectedDate)}. '
-                  'The center will contact you shortly.',
-                );
+                _saveAppointment(center, selectedDate, slot);
               },
-              child: const Text('Confirm Request'),
+              child: const Text('Save request'),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// The patient's saved visits, with the phone number kept in front of them and
+  /// an explicit prompt while a visit is still unconfirmed.
+  Widget _plannedVisitsCard(ThemeData theme) {
+    return SectionCard(
+      title: 'Your planned visits',
+      icon: Icons.event_available_outlined,
+      subtitle: 'Saved by you. The app does not contact centres for you.',
+      children: [
+        for (final request in _appointments) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  request.centerName,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${AppFormats.d(request.requestedDate)} · ${request.slot}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      request.status.needsPatientAction
+                          ? Icons.phone_in_talk_outlined
+                          : Icons.check_circle_outline,
+                      size: 16,
+                      color: request.status.needsPatientAction
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        request.status.label,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: request.status.needsPatientAction
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SelectableText(
+                        request.centerPhone,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Copy the phone number',
+                      icon: const Icon(Icons.copy, size: 18),
+                      onPressed: () {
+                        Clipboard.setData(
+                          ClipboardData(text: request.centerPhone),
+                        );
+                        showSnack(context, 'Phone number copied.');
+                      },
+                    ),
+                  ],
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    if (request.status == AppointmentStatus.recorded)
+                      TextButton(
+                        onPressed: () => _setAppointmentStatus(
+                          request,
+                          AppointmentStatus.confirmedWithCentre,
+                        ),
+                        child: const Text('I have confirmed it'),
+                      ),
+                    if (request.status == AppointmentStatus.confirmedWithCentre)
+                      TextButton(
+                        onPressed: () => _setAppointmentStatus(
+                          request,
+                          AppointmentStatus.attended,
+                        ),
+                        child: const Text('I attended'),
+                      ),
+                    if (request.isOpen)
+                      TextButton(
+                        onPressed: () => _deleteAppointment(request),
+                        child: const Text('Remove'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (request != _appointments.last) const Divider(height: 18),
+        ],
+      ],
     );
   }
 
@@ -198,10 +408,10 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
     final cities = [
       'All',
-      ...{for (final c in ScreeningCentersCatalog.centers) c.city},
+      ...{for (final c in _centers) c.city},
     ];
 
-    final filtered = ScreeningCentersCatalog.centers.where((c) {
+    final filtered = _centers.where((c) {
       if (_selectedType != null && c.type != _selectedType) return false;
       if (_selectedCity != 'All' && c.city != _selectedCity) return false;
       if (_searchQuery.isNotEmpty) {
@@ -228,6 +438,23 @@ class _ReferralScreenState extends State<ReferralScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            NoticeBanner(
+              title: 'Check before you travel',
+              message: _centersAreBundled
+                  ? 'These details are the copy built into the app and may be '
+                        'out of date. Phone the centre to confirm timings and '
+                        'whether the clinic is running before you go.'
+                  : 'Phone the centre to confirm timings and availability '
+                        'before you travel.',
+              severity: NoticeSeverity.caution,
+            ),
+            const SizedBox(height: 14),
+
+            if (_appointments.isNotEmpty) ...[
+              _plannedVisitsCard(theme),
+              const SizedBox(height: 14),
+            ],
+
             // Referral Letter Quick Action Banner
             Container(
               padding: const EdgeInsets.all(16),

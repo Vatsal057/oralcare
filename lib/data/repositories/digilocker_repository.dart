@@ -100,6 +100,24 @@ class DigiLockerRepository {
     }
   }
 
+  /// Records the patient has explicitly shared, read by the clinician reviewing
+  /// their case.
+  ///
+  /// The `is_shared` filter is required, not an optimisation: the security rules
+  /// only permit a clinician to read shared documents, and Firestore rejects any
+  /// query it cannot prove stays inside that permission.
+  Future<List<DigiLockerRecord>> sharedRecordsForUid(String patientUid) async {
+    final col = _userRecordsCol(patientUid);
+    if (col == null) return const [];
+
+    final snap = await col.where('is_shared', isEqualTo: 1).get();
+    final list = snap.docs
+        .map((d) => DigiLockerRecord.fromJson(d.data()))
+        .toList();
+    list.sort((a, b) => b.documentDate.compareTo(a.documentDate));
+    return List.unmodifiable(list);
+  }
+
   Future<void> toggleSharing({
     required String patientId,
     required String recordId,

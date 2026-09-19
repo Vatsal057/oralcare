@@ -19,6 +19,7 @@ import 'assessment_detail_screen.dart';
 import 'consent_screen.dart';
 import 'flow_route.dart';
 import 'lesion_reference_dialog.dart';
+import 'profile_screen.dart';
 import 'risk_assessment_screen.dart';
 
 /// Patient experience hub integrating:
@@ -164,6 +165,16 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                   builder: (_) => const LesionReferenceDialog(),
                 ),
               );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: 'My profile',
+            onPressed: () async {
+              await Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              if (mounted) await _load();
             },
           ),
           IconButton(

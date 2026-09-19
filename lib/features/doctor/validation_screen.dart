@@ -25,6 +25,7 @@ class ValidationScreen extends StatefulWidget {
 class _ValidationScreenState extends State<ValidationScreen> {
   ValidationSummary? _summary;
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -33,13 +34,26 @@ class _ValidationScreenState extends State<ValidationScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
-    final cases = await context.read<ClinicalRepository>().allSharedCases();
-    if (!mounted) return;
     setState(() {
-      _summary = ValidationService.summarise(cases);
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
+    try {
+      final cases = await context.read<ClinicalRepository>().allSharedCases();
+      if (!mounted) return;
+      setState(() {
+        _summary = ValidationService.summarise(cases);
+        _loading = false;
+      });
+    } catch (e) {
+      // Without this the screen span forever on a rejected query, which looked
+      // identical to "still loading".
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load validation data. $e';
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -59,7 +73,30 @@ class _ValidationScreenState extends State<ValidationScreen> {
         ],
       ),
       body: SafeArea(
-        child: _loading || summary == null
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    NoticeBanner(
+                      title: 'Validation data could not be loaded',
+                      message: _error!,
+                      severity: NoticeSeverity.alert,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _load,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Try again'),
+                    ),
+                  ],
+                ),
+              )
+            : summary == null
             ? const Center(child: CircularProgressIndicator())
             : ListView(
                 padding: const EdgeInsets.all(16),
