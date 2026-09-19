@@ -410,8 +410,10 @@ class _QueueCard extends StatelessWidget {
                       foreground: theme.colorScheme.onSurface,
                       icon: Icons.healing_outlined,
                     ),
-                  if (patientCase.photoViewingAllowed &&
-                      patientCase.lesions.any((l) => l.hasPhoto))
+                  // hasRemotePhoto, not hasPhoto: a photograph that never left
+                  // the patient's phone is not one this doctor can open, and the
+                  // pill must not promise them something the record cannot show.
+                  if (patientCase.viewableLesions.any((l) => l.hasRemotePhoto))
                     _Pill(
                       label: 'Photograph',
                       background: theme.colorScheme.surfaceContainerHighest,
