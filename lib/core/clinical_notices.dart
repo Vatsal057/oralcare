@@ -28,14 +28,26 @@ class ClinicalNotices {
       'I agree to use this app for oral-health awareness and to carry out a '
       'guided self-examination of my own mouth.';
 
+  /// WORDING IS LOAD-BEARING: the photograph is written to the patient's own
+  /// account as soon as this consent is given, not only when a record is
+  /// shared. An earlier version promised it "stays on this device", which
+  /// stopped being true once photographs moved into the database. A consent
+  /// form that misdescribes where data goes is not consent.
   static const String consentPhotoDetail =
       'I agree that I may take and store a photograph of a finding inside my '
-      'mouth. Photographs stay on this device unless I also agree to share my '
-      'record with a doctor.';
+      'mouth. The photograph is saved to my own account, so I can see it on any '
+      'device I sign in to. No doctor can open it unless I also choose to share '
+      'that record with one.';
 
+  /// Names the coordinator explicitly: a shared record is also readable
+  /// cohort-wide by the pilot coordinator for validation statistics, and a
+  /// patient cannot consent to something they were not told about.
   static const String consentShareDetail =
-      'I agree that a doctor using this app may see my record, including my '
-      'answers, my self-examination findings and any photograph I have added.';
+      'I agree that a doctor I choose may see my record, including my answers, '
+      'my self-examination findings and any photograph I have added. Only the '
+      'doctor I pick can open it. The pilot coordinator may also see shared '
+      'records to check how well the app is working. I can withdraw this at any '
+      'time.';
 
   /// Shown at the top of the doctor interface.
   static const String doctorResponsibility =
@@ -54,11 +66,18 @@ class ClinicalNotices {
       'repeated assessments on the same patient. Use them to monitor the '
       'pilot, not as validation evidence.';
 
-  /// Shown where data storage is explained.
+  /// Shown where data storage is explained, including above the consent form.
+  ///
+  /// This described device-only storage until records moved to Firestore. It is
+  /// now written to state what actually happens and, just as importantly, which
+  /// protections this pilot does not yet have: a patient agreeing to share a
+  /// clinical record is entitled to know there is no access audit trail.
   static const String storageNotice =
-      'Records are stored on this device only. Nothing is uploaded. Before any '
-      'real-world deployment this must move to an authenticated, encrypted '
-      'server with audit logging.';
+      'Your records are saved to your account in a secure cloud database, '
+      'encrypted while being sent and while stored. Only you can open them '
+      'unless you choose to share a record. This is a pilot build: it does not '
+      'yet keep an audit trail of who opened a record, and it has no automatic '
+      'backup.';
 
   /// Prevention advice for the lower-risk output (spec Table 7).
   static const List<String> preventionAdvice = [

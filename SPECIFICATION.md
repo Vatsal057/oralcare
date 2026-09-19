@@ -4,7 +4,7 @@
 **Platforms:** Android (full), Web (full except camera capture)
 **Live web build:** https://oral-cancer-pilot-1027-dc3a3.web.app
 **Backend:** Firebase Authentication + Cloud Firestore (free Spark plan; no Cloud Storage, no Cloud Functions)
-**Verification at time of writing:** `flutter analyze` clean · 144 tests pass · web and debug APK build
+**Verification at time of writing:** `flutter analyze` clean · 156 tests pass · web and debug APK build
 
 ---
 
@@ -801,9 +801,21 @@ Two further safeguards not requested but present:
 - **`provisionalScores`** on every result and history screen: *"Scores and thresholds in this build are provisional for pilot development and have not yet been clinically validated."* IPO Table 3 marks the cut-offs provisional; the app repeats it to the patient rather than only in a document.
 - **`validationCaveat`** above the validation statistics, stating they are not validation evidence.
 
-### 13.1 One stale notice
+### 13.1 Consent wording accuracy — corrected
 
-`ClinicalNotices.storageNotice` still reads *"Records are stored on this device only. Nothing is uploaded."* That was true before the Firestore migration and is now **factually wrong** — it appears on the role-selection and consent screens. Since it appears above a consent form, it is a consent-accuracy problem, not a cosmetic one, and should be corrected before any further use.
+Three strings on or above the consent form had gone stale when records moved from device-local storage into Firestore. All three are now corrected, and a test file (`test/consent_wording_test.dart`, 12 tests) pins the claims so they cannot drift back.
+
+| String | Was | Now |
+|---|---|---|
+| `storageNotice` | *"Records are stored on this device only. Nothing is uploaded."* — false since the Firestore migration | States records are saved to the patient's account, encrypted in transit and at rest, readable only by them unless shared. **Also discloses what the pilot lacks**: no audit trail of who opened a record, no automatic backup |
+| `consentPhotoDetail` | *"Photographs stay on this device unless I also agree to share my record with a doctor"* — false; the photograph is written to Firestore as soon as photograph consent is given, independent of share consent | States the photograph is saved to the patient's own account so it is available on any device they sign in to, and that no doctor can open it unless they also share that record |
+| `consentShareDetail` | *"a doctor using this app may see my record"* — implies any clinician; sharing is addressed to one | States that only the chosen doctor can open it, that it can be withdrawn at any time, and **discloses the pilot coordinator**, who can read shared records cohort-wide for validation |
+
+The coordinator disclosure was an omission, not a drift: the role was added after the consent text was written, and a patient cannot consent to a disclosure they were never told about.
+
+A related screen string was corrected with them: the lesion screen's photograph section said *"Stays on this device unless you share your record with a doctor."*
+
+**Design decision recorded.** There were two ways to resolve the photograph contradiction: change the text to match the behaviour, or gate the upload on share consent so the original promise became true. The text was changed. Holding the photograph in the patient's own account is a benefit to them — it survives device loss and appears in their history on any device they sign in to — and the Firestore rules already restrict it to the owner plus any clinician they addressed the record to. So "saved to your account, no doctor can see it unless you share" is both accurate and the more useful behaviour. Gating the upload would have traded a real patient benefit for wording convenience.
 
 ---
 
@@ -999,7 +1011,7 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 
 | Item | Severity |
 |---|---|
-| `storageNotice` claims nothing is uploaded — appears above a consent form | **High** — consent accuracy |
+| ~~Consent wording claimed records and photographs stayed on the device~~ | **Fixed** — see §13.1 |
 | Enrolment code + `hasDoctorProfile()` rules fallback allow self-assigned clinician role | **High** — must be removed before real deployment |
 | `outcome` rules block has no coordinator read branch while `clinical` does | Medium — review whether intentional |
 | Emergency and centre "Call" buttons display a number rather than dialling | Low — but the label implies dialling |
@@ -1025,7 +1037,7 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 
 ## 16. Test coverage
 
-144 tests across 11 files. All pass.
+156 tests across 12 files. All pass.
 
 | File | Covers |
 |---|---|
@@ -1037,6 +1049,7 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 | `translation_test.dart` | Every red flag and exam site has a Kannada term; no placeholders; gender options match the questionnaire |
 | `reminder_service_test.dart` | Platform gating, id allocation |
 | `lesion_photo_test.dart` | The three photograph states, legacy-row compatibility, the 1 MiB limit, and that withdrawing consent cuts every route to the image |
+| `consent_wording_test.dart` | Consent-form accuracy: the stale device-only claims cannot reappear, and the account/encryption/audit-gap/coordinator/withdrawal disclosures must stay stated |
 | `enrolment_switch_test.dart` | Behaviour under both `ALLOW_ENROLMENT_CODE` builds |
 | `new_features_test.dart` | CareConnect module models |
 | `app_smoke_test.dart` | App boots, role selection renders |
@@ -1108,7 +1121,7 @@ Build switches:
 | Emergency conditions | 6 |
 | Reminder types | 8 |
 | Firestore collections / subcollections | 12 |
-| Tests | 144 |
+| Tests | 156 |
 
 ## Appendix B — Key constants
 

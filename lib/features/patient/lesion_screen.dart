@@ -302,8 +302,10 @@ class _LesionScreenState extends State<LesionScreen> {
               title: 'Photograph',
               icon: Icons.photo_camera_outlined,
               subtitle: flow.photographAllowed
-                  ? 'Optional. Stays on this device unless you share your '
-                        'record with a doctor.'
+                  // Matches ClinicalNotices.consentPhotoDetail: the photograph
+                  // is saved to the patient's account, not kept on the phone.
+                  ? 'Optional. Saved to your account. No doctor can see it '
+                        'unless you share this record with one.'
                   : 'You have not given photograph consent, so this is turned '
                         'off.',
               children: [
