@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'core/theme.dart';
 import 'data/models/app_user.dart';
 import 'data/repositories/assessment_repository.dart';
+import 'data/repositories/cessation_repository.dart';
 import 'data/repositories/clinical_repository.dart';
+import 'data/repositories/digilocker_repository.dart';
 import 'data/repositories/doctor_directory_repository.dart';
 import 'features/auth/role_select_screen.dart';
 import 'features/doctor/doctor_home_screen.dart';
@@ -25,6 +27,8 @@ class OralCancerApp extends StatelessWidget {
         Provider(create: (_) => AssessmentRepository()),
         Provider(create: (_) => ClinicalRepository()),
         Provider(create: (_) => const DoctorDirectoryRepository()),
+        Provider(create: (_) => DigiLockerRepository()),
+        Provider(create: (_) => CessationRepository()),
       ],
       child: MaterialApp(
         title: 'OralCare',

@@ -10,16 +10,16 @@ import 'package:oralcare/domain/risk_engine.dart';
 void main() {
   /// Answers with every scored variable at its zero option.
   Map<String, String?> baseline() => {
-        RiskKeys.smoking: 'never',
-        RiskKeys.smokelessTobacco: 'never',
-        RiskKeys.areca: 'never',
-        RiskKeys.gutkha: 'no',
-        RiskKeys.alcohol: 'none',
-        RiskKeys.previousOpmd: AnswerValues.no,
-        RiskKeys.previousOscc: AnswerValues.no,
-        RiskKeys.suspiciousLesion: AnswerValues.no,
-        RiskKeys.neckLump: AnswerValues.no,
-      };
+    RiskKeys.smoking: 'never',
+    RiskKeys.smokelessTobacco: 'never',
+    RiskKeys.areca: 'never',
+    RiskKeys.gutkha: 'no',
+    RiskKeys.alcohol: 'none',
+    RiskKeys.previousOpmd: AnswerValues.no,
+    RiskKeys.previousOscc: AnswerValues.no,
+    RiskKeys.suspiciousLesion: AnswerValues.no,
+    RiskKeys.neckLump: AnswerValues.no,
+  };
 
   group('Age bands (spec Table 2: 0/1/2/3)', () {
     test('map ages onto the correct band', () {
@@ -218,23 +218,27 @@ void main() {
       expect(result.hasUnknownAnswers, isTrue);
       expect(result.unknownAnswerKeys, contains(RiskKeys.previousOpmd));
       expect(result.scoreBreakdown[RiskKeys.previousOpmd], 0);
-      expect(
-        result.reasons.any((r) => r.code == 'unknown_answers'),
-        isTrue,
-      );
+      expect(result.reasons.any((r) => r.code == 'unknown_answers'), isTrue);
     });
   });
 
   group('Cumulative scoring', () {
     test('a heavy-exposure case reaches the higher band', () {
       final answers = baseline()
-        ..[RiskKeys.smoking] = 'current_regular' // 3
-        ..[RiskKeys.smokelessTobacco] = 'current' // 3
-        ..[RiskKeys.areca] = 'regular_current' // 3
-        ..[RiskKeys.gutkha] = 'current' // 0, unweighted
-        ..[RiskKeys.exposureDuration] = 'gt_10y' // 2
-        ..[RiskKeys.useFrequency] = 'several_daily' // 2
-        ..[RiskKeys.alcohol] = 'regular' // 2
+        ..[RiskKeys.smoking] =
+            'current_regular' // 3
+        ..[RiskKeys.smokelessTobacco] =
+            'current' // 3
+        ..[RiskKeys.areca] =
+            'regular_current' // 3
+        ..[RiskKeys.gutkha] =
+            'current' // 0, unweighted
+        ..[RiskKeys.exposureDuration] =
+            'gt_10y' // 2
+        ..[RiskKeys.useFrequency] =
+            'several_daily' // 2
+        ..[RiskKeys.alcohol] =
+            'regular' // 2
         ..[RiskKeys.previousOpmd] = AnswerValues.yes; // 4
 
       // age 65 contributes 3 => 3+3+3+3+2+2+2+4 = 22
@@ -242,8 +246,11 @@ void main() {
       expect(result.totalScore, 22);
       expect(result.category, RiskCategory.higher);
       expect(result.outputState, PatientOutputState.higherRisk);
-      expect(result.referralAlert, isTrue,
-          reason: 'higher risk warrants a professional examination');
+      expect(
+        result.referralAlert,
+        isTrue,
+        reason: 'higher risk warrants a professional examination',
+      );
     });
 
     test('a boundary case of exactly 5 is increased risk', () {
@@ -276,10 +283,7 @@ void main() {
       expect(result.redFlagPresent, isFalse);
       expect(result.professionalCheckRequired, isFalse);
       expect(result.outputState, PatientOutputState.lowerRisk);
-      expect(
-        result.reasons.any((r) => r.code == 'numerical_category'),
-        isTrue,
-      );
+      expect(result.reasons.any((r) => r.code == 'numerical_category'), isTrue);
     });
 
     test('red flag under two weeks records the finding and advises review', () {
@@ -306,10 +310,7 @@ void main() {
       );
       expect(result.lesionPersistent, isTrue);
       expect(result.professionalCheckRequired, isTrue);
-      expect(
-        result.outputState,
-        PatientOutputState.professionalCheckRequired,
-      );
+      expect(result.outputState, PatientOutputState.professionalCheckRequired);
       expect(result.referralAlert, isTrue);
       expect(
         result.reasons.any((r) => r.code == 'red_flag_persistent'),
@@ -324,8 +325,11 @@ void main() {
         redFlagKeys: {'red_and_white_patch'},
       );
       expect(result.totalScore, 0);
-      expect(result.category, RiskCategory.lower,
-          reason: 'the numerical band is still recorded for validation');
+      expect(
+        result.category,
+        RiskCategory.lower,
+        reason: 'the numerical band is still recorded for validation',
+      );
       expect(
         result.outputState,
         PatientOutputState.professionalCheckRequired,
@@ -390,10 +394,7 @@ void main() {
       expect(result.totalScore, 5, reason: 'OSCC contributes 5');
       expect(result.previousOscc, isTrue);
       expect(result.professionalCheckRequired, isTrue);
-      expect(
-        result.outputState,
-        PatientOutputState.professionalCheckRequired,
-      );
+      expect(result.outputState, PatientOutputState.professionalCheckRequired);
       expect(result.reasons.any((r) => r.code == 'previous_oscc'), isTrue);
     });
 
@@ -407,10 +408,7 @@ void main() {
         redFlagKeys: {'lump_thickening'},
       );
       expect(result.professionalCheckRequired, isTrue);
-      expect(
-        result.reasons.where((r) => r.code == 'previous_oscc').length,
-        1,
-      );
+      expect(result.reasons.where((r) => r.code == 'previous_oscc').length, 1);
     });
   });
 
@@ -467,10 +465,16 @@ void main() {
         redFlagKeys: {'red_patch'},
         selfExamAbnormality: true,
       );
-      expect(result.professionalCheckRequired, isFalse,
-          reason: 'under two weeks, so no override');
-      expect(result.referralAlert, isTrue,
-          reason: 'but the doctor queue should still surface it');
+      expect(
+        result.professionalCheckRequired,
+        isFalse,
+        reason: 'under two weeks, so no override',
+      );
+      expect(
+        result.referralAlert,
+        isTrue,
+        reason: 'but the doctor queue should still surface it',
+      );
     });
   });
 
@@ -552,19 +556,13 @@ void main() {
   group('Storage round-trip of enums', () {
     test('risk categories survive a round trip', () {
       for (final category in RiskCategory.values) {
-        expect(
-          RiskCategoryX.fromStorage(category.storageValue),
-          category,
-        );
+        expect(RiskCategoryX.fromStorage(category.storageValue), category);
       }
     });
 
     test('output states survive a round trip', () {
       for (final state in PatientOutputState.values) {
-        expect(
-          PatientOutputStateX.fromStorage(state.storageValue),
-          state,
-        );
+        expect(PatientOutputStateX.fromStorage(state.storageValue), state);
       }
     });
   });

@@ -58,10 +58,7 @@ void main() {
 
   group('states that must not raise a non-attendance', () {
     test('a patient who arrived has not failed, even late', () {
-      final r = record(
-        referralDate: referred,
-        arrived: DateTime(2026, 9, 20),
-      );
+      final r = record(referralDate: referred, arrived: DateTime(2026, 9, 20));
       expect(r.patientArrived, isTrue);
       expect(
         r.failedToArriveWithinTwoWeeks(now: DateTime(2026, 10, 1)),
@@ -98,10 +95,7 @@ void main() {
   group('chasing a non-attendance', () {
     test('an unchased non-attendance needs a reminder', () {
       final r = record(referralDate: referred);
-      expect(
-        r.needsAttendanceReminder(now: DateTime(2026, 9, 20)),
-        isTrue,
-      );
+      expect(r.needsAttendanceReminder(now: DateTime(2026, 9, 20)), isTrue);
     });
 
     test('recording the reminder clears the outstanding action', () {
@@ -119,10 +113,7 @@ void main() {
     });
 
     test('a patient who attended never needs chasing', () {
-      final r = record(
-        referralDate: referred,
-        arrived: DateTime(2026, 9, 3),
-      );
+      final r = record(referralDate: referred, arrived: DateTime(2026, 9, 3));
       expect(r.needsAttendanceReminder(now: DateTime(2026, 9, 20)), isFalse);
     });
   });

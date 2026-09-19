@@ -69,6 +69,22 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- personal records and habit data ----------------------------------
+    // Firestore rules do NOT cascade into subcollections, so the users/{uid}
+    // block above does not cover these. Without their own match blocks every
+    // write was denied, silently caught, and kept only in memory — so uploaded
+    // reports and quit plans were lost when the app closed.
+    //
+    // Owner-only. Sharing a stored record with a clinician is not wired up yet;
+    // when it is, add a doctor-read branch keyed on the record's is_shared flag.
+    match /users/{uid}/digilocker_records/{recordId} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid}/cessation/{docId} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
     // ---- clinician directory ----------------------------------------------
     // The list a patient chooses a recipient from. Any signed-in user may read
     // it, because a patient must be able to see who they can send a record to.

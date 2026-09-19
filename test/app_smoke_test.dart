@@ -6,17 +6,12 @@ import 'package:oralcare/features/auth/role_select_screen.dart';
 /// it renders without throwing. The risk engine has its own focused unit suite.
 void main() {
   testWidgets('role selection renders both interfaces', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: RoleSelectScreen()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: RoleSelectScreen()));
 
     expect(find.text('OralCare'), findsOneWidget);
     expect(find.text('Patient login'), findsOneWidget);
     expect(find.text('Doctor login'), findsOneWidget);
     // The no-diagnosis safety notice must always be present on entry.
-    expect(
-      find.textContaining('does not diagnose cancer'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('does not diagnose cancer'), findsOneWidget);
   });
 }

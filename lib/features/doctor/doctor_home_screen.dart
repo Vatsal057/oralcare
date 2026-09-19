@@ -358,7 +358,7 @@ class _QueueCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 'Age ${patient.age ?? '—'}'
-                '${patient.sex != null ? ' · ${patient.sex}' : ''} · '
+                '${patient.gender != null ? ' · ${patient.gender}' : ''} · '
                 '${AppFormats.dt(patientCase.assessment.createdAt)}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,

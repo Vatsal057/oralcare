@@ -5,6 +5,7 @@ import '../../core/widgets/common.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
 import 'flow_route.dart';
+import 'lesion_reference_dialog.dart';
 import 'lesion_screen.dart';
 import 'result_screen.dart';
 
@@ -44,6 +45,18 @@ class SelfExamScreen extends StatelessWidget {
                   'Find good light and a mirror. Wash your hands. Take out any '
                   'dentures. Work through the sites in order, and mark anything '
                   'that looks or feels different.',
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const LesionReferenceDialog(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('View Real Clinical Reference Photos'),
             ),
             const SizedBox(height: 14),
 
@@ -113,62 +126,166 @@ class _SiteCard extends StatelessWidget {
     final finding = flow.findingFor(site.key);
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  finding.abnormality
-                      ? Icons.error_outline
-                      : finding.examined
-                      ? Icons.check_circle_outline
-                      : Icons.radio_button_unchecked,
-                  size: 20,
-                  color: finding.abnormality
-                      ? theme.colorScheme.error
-                      : finding.examined
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outline,
+      clipBehavior: Clip.antiAlias,
+      elevation: 3,
+      shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Stack(
+            children: [
+              Image.asset(
+                _imageForSite(site.key),
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 200,
+                  color: theme.colorScheme.surfaceContainerHighest,
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  site.label,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.8),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        finding.abnormality
+                            ? Icons.error_outline
+                            : finding.examined
+                            ? Icons.check_circle_outline
+                            : Icons.radio_button_unchecked,
+                        size: 24,
+                        color: finding.abnormality
+                            ? Colors.redAccent
+                            : finding.examined
+                            ? Colors.greenAccent
+                            : Colors.white70,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          site.label,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  site.instruction,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.3,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        title: const Text(
+                          'I examined this site',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        value: finding.examined,
+                        onChanged: (value) =>
+                            flow.setSiteExamined(site.key, value),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      if (finding.examined) ...[
+                        const Divider(height: 1),
+                        SwitchListTile(
+                          title: const Text(
+                            'I found something abnormal',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: const Text(
+                            'A sore, patch, lump, swelling or anything that feels changed.',
+                          ),
+                          value: finding.abnormality,
+                          onChanged: (value) =>
+                              flow.setSiteAbnormality(site.key, value),
+                          activeThumbColor: theme.colorScheme.error,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (finding.abnormality)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.tonalIcon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const LesionReferenceDialog(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.compare_outlined),
+                        label: const Text('Compare with clinical photos'),
+                        style: FilledButton.styleFrom(
+                          foregroundColor: theme.colorScheme.error,
+                          backgroundColor: theme.colorScheme.errorContainer
+                              .withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              site.instruction,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 10),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('I examined this site'),
-              value: finding.examined,
-              onChanged: (value) => flow.setSiteExamined(site.key, value),
-            ),
-            if (finding.examined)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('I found something abnormal'),
-                subtitle: const Text(
-                  'A sore, patch, lump, swelling or anything that feels changed.',
-                ),
-                value: finding.abnormality,
-                onChanged: (value) => flow.setSiteAbnormality(site.key, value),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
+
+String _imageForSite(String key) => switch (key) {
+  'lips' => 'assets/images/1.png',
+  'inner_cheeks' => 'assets/images/2.png',
+  'gums' => 'assets/images/3.png',
+  'tongue' => 'assets/images/4.png',
+  'floor_of_mouth' => 'assets/images/5.png',
+  'palate' => 'assets/images/6.png',
+  'neck' => 'assets/images/7.png',
+  _ => 'assets/images/1.png',
+};

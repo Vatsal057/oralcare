@@ -7,10 +7,12 @@ class AppFormats {
 
   static final DateFormat date = DateFormat('d MMM yyyy');
   static final DateFormat dateTime = DateFormat('d MMM yyyy, HH:mm');
+  static final DateFormat time = DateFormat('HH:mm');
 
   static String d(DateTime? value) => value == null ? '—' : date.format(value);
   static String dt(DateTime? value) =>
       value == null ? '—' : dateTime.format(value);
+  static String t(DateTime? value) => value == null ? '—' : time.format(value);
 
   /// Renders a nullable Yes/No field, keeping "not recorded" distinct from "No".
   static String yesNo(bool? value) => switch (value) {
@@ -61,8 +63,21 @@ class SectionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 20, color: theme.colorScheme.primary),
-                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 24,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                 ],
                 Expanded(
                   child: Column(
@@ -125,34 +140,42 @@ class NoticeBanner extends StatelessWidget {
       IconData icon,
     ) = switch (severity) {
       NoticeSeverity.info => (
-        isDark ? const Color(0xFF10344F) : const Color(0xFFE7F2FA),
-        isDark ? Colors.white : const Color(0xFF0B4A6F),
+        isDark
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+            : theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+        theme.colorScheme.primary,
         Icons.info_outline,
       ),
       NoticeSeverity.caution => (
-        isDark ? const Color(0xFF4A3A00) : const Color(0xFFFFF7E0),
-        isDark ? Colors.white : const Color(0xFF6B5200),
+        isDark
+            ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.3)
+            : theme.colorScheme.tertiaryContainer.withValues(alpha: 0.4),
+        theme.colorScheme.tertiary,
         Icons.warning_amber_rounded,
       ),
       NoticeSeverity.alert => (
-        isDark ? const Color(0xFF5C0F0F) : const Color(0xFFFDECEA),
-        isDark ? Colors.white : const Color(0xFF8C1D18),
+        isDark
+            ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
+            : theme.colorScheme.errorContainer.withValues(alpha: 0.4),
+        theme.colorScheme.error,
         Icons.error_outline,
       ),
       NoticeSeverity.success => (
-        isDark ? const Color(0xFF11431B) : const Color(0xFFE7F6E9),
-        isDark ? Colors.white : const Color(0xFF1B5E20),
+        isDark
+            ? const Color(0xFF11431B).withValues(alpha: 0.3)
+            : const Color(0xFFE7F6E9),
+        isDark ? Colors.greenAccent : const Color(0xFF1B5E20),
         Icons.check_circle_outline,
       ),
     };
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: foreground.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: foreground.withValues(alpha: 0.15)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,37 +275,39 @@ class SingleChoiceField<T> extends StatelessWidget {
               ),
             ),
           ),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: hasError
-                  ? theme.colorScheme.error
-                  : theme.colorScheme.outlineVariant,
-              width: hasError ? 2 : 1,
-            ),
-          ),
-          child: RadioGroup<T>(
-            groupValue: value,
-            onChanged: onChanged,
-            child: Column(
-              children: [
-                for (var i = 0; i < options.length; i++) ...[
-                  if (i > 0) const Divider(height: 1),
-                  RadioListTile<T>(
-                    value: options[i],
-                    title: Text(labelBuilder(options[i])),
-                    dense: true,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        i == 0 || i == options.length - 1 ? 11 : 0,
-                      ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final isSelected = value == option;
+            return ChoiceChip(
+              label: Text(labelBuilder(option)),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  onChanged(option);
+                }
+              },
+              backgroundColor: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.5),
+              selectedColor: theme.colorScheme.primaryContainer,
+              labelStyle: TextStyle(
+                color: isSelected
+                    ? theme.colorScheme.onPrimaryContainer
+                    : theme.colorScheme.onSurface,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              side: hasError
+                  ? BorderSide(color: theme.colorScheme.error)
+                  : BorderSide(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outlineVariant.withValues(
+                              alpha: 0.5,
+                            ),
                     ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+            );
+          }).toList(),
         ),
         if (hasError)
           Padding(

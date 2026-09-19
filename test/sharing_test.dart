@@ -56,8 +56,10 @@ void main() {
     });
 
     test('an empty recipient string is not a recipient', () {
-      expect(record(shared: true, sharedWithUid: '').isSharedWithSomeone,
-          isFalse);
+      expect(
+        record(shared: true, sharedWithUid: '').isSharedWithSomeone,
+        isFalse,
+      );
     });
   });
 

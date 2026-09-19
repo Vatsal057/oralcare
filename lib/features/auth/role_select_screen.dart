@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
 import '../../core/widgets/common.dart';
 import '../../data/models/app_user.dart';
+import '../../state/session_controller.dart';
 import 'login_screen.dart';
 
 /// Entry point. The two interfaces are kept visually and structurally separate
@@ -68,6 +70,65 @@ class RoleSelectScreen extends StatelessWidget {
                     'examination, investigations, biopsy and referral, and '
                     'enter diagnosis and follow-up outcomes.',
                 onTap: () => _open(context, UserRole.doctor),
+              ),
+              const SizedBox(height: 14),
+              Card(
+                elevation: 0,
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.6,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: theme.colorScheme.outlineVariant),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    context.read<SessionController>().continueAsGuest();
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.tertiaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.explore_outlined,
+                            color: theme.colorScheme.onTertiaryContainer,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Explore as Guest',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Browse education, self-exam, habits, and screening '
+                                'centres without creating an account.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, size: 20),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 28),
               const NoticeBanner(

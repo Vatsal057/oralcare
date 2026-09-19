@@ -1,0 +1,128 @@
+import 'dart:convert';
+
+/// The 13 clinical document categories defined in Section G of the specification
+/// ("Personal oral-cancer records like Digi locker").
+enum DigiLockerCategory {
+  consultation,
+  clinicalPhoto,
+  biopsyHistopathology,
+  bloodInvestigation,
+  radiologyImaging,
+  diagnosisStaging,
+  treatmentPlan,
+  prescription,
+  surgeryRadiotherapy,
+  chemotherapy,
+  dischargeSummary,
+  followUpNote,
+  billsInsurance,
+}
+
+extension DigiLockerCategoryX on DigiLockerCategory {
+  String get label => switch (this) {
+    DigiLockerCategory.consultation => 'Consultation Record',
+    DigiLockerCategory.clinicalPhoto => 'Clinical Photograph',
+    DigiLockerCategory.biopsyHistopathology => 'Biopsy & Histopathology',
+    DigiLockerCategory.bloodInvestigation => 'Blood Investigation',
+    DigiLockerCategory.radiologyImaging => 'Imaging (CT/MRI/OPG)',
+    DigiLockerCategory.diagnosisStaging => 'Diagnosis & Staging',
+    DigiLockerCategory.treatmentPlan => 'Treatment Plan',
+    DigiLockerCategory.prescription => 'Prescription',
+    DigiLockerCategory.surgeryRadiotherapy => 'Surgery / Radiotherapy',
+    DigiLockerCategory.chemotherapy => 'Chemotherapy Record',
+    DigiLockerCategory.dischargeSummary => 'Discharge Summary',
+    DigiLockerCategory.followUpNote => 'Follow-up Note',
+    DigiLockerCategory.billsInsurance => 'Bills & Insurance',
+  };
+
+  String get storageValue => name;
+
+  static DigiLockerCategory fromStorage(String? val) {
+    return DigiLockerCategory.values.firstWhere(
+      (c) => c.name == val,
+      orElse: () => DigiLockerCategory.consultation,
+    );
+  }
+}
+
+class DigiLockerRecord {
+  const DigiLockerRecord({
+    required this.id,
+    required this.patientId,
+    required this.title,
+    required this.category,
+    required this.facilityOrDoctor,
+    required this.documentDate,
+    this.notes,
+    this.localFilePath,
+    this.isSharedWithClinician = false,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String patientId;
+  final String title;
+  final DigiLockerCategory category;
+  final String facilityOrDoctor;
+  final DateTime documentDate;
+  final String? notes;
+  final String? localFilePath;
+  final bool isSharedWithClinician;
+  final DateTime createdAt;
+
+  DigiLockerRecord copyWith({
+    String? title,
+    DigiLockerCategory? category,
+    String? facilityOrDoctor,
+    DateTime? documentDate,
+    String? notes,
+    String? localFilePath,
+    bool? isSharedWithClinician,
+  }) => DigiLockerRecord(
+    id: id,
+    patientId: patientId,
+    title: title ?? this.title,
+    category: category ?? this.category,
+    facilityOrDoctor: facilityOrDoctor ?? this.facilityOrDoctor,
+    documentDate: documentDate ?? this.documentDate,
+    notes: notes ?? this.notes,
+    localFilePath: localFilePath ?? this.localFilePath,
+    isSharedWithClinician: isSharedWithClinician ?? this.isSharedWithClinician,
+    createdAt: createdAt,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'patient_id': patientId,
+    'title': title,
+    'category': category.storageValue,
+    'facility_or_doctor': facilityOrDoctor,
+    'document_date': documentDate.toIso8601String(),
+    'notes': notes,
+    'local_file_path': localFilePath,
+    'is_shared': isSharedWithClinician ? 1 : 0,
+    'created_at': createdAt.toIso8601String(),
+  };
+
+  factory DigiLockerRecord.fromJson(Map<String, dynamic> json) =>
+      DigiLockerRecord(
+        id: json['id'] as String,
+        patientId: json['patient_id'] as String? ?? '',
+        title: json['title'] as String? ?? 'Untitled Document',
+        category: DigiLockerCategoryX.fromStorage(json['category'] as String?),
+        facilityOrDoctor: json['facility_or_doctor'] as String? ?? '',
+        documentDate:
+            DateTime.tryParse(json['document_date'] as String? ?? '') ??
+            DateTime.now(),
+        notes: json['notes'] as String?,
+        localFilePath: json['local_file_path'] as String?,
+        isSharedWithClinician: (json['is_shared'] as int? ?? 0) == 1,
+        createdAt:
+            DateTime.tryParse(json['created_at'] as String? ?? '') ??
+            DateTime.now(),
+      );
+
+  String serialize() => jsonEncode(toJson());
+  static DigiLockerRecord deserialize(String str) =>
+      DigiLockerRecord.fromJson(jsonDecode(str) as Map<String, dynamic>);
+}

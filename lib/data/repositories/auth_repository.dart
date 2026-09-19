@@ -20,9 +20,10 @@ class AuthException implements Exception {
 /// UI can keep using usernames while Firebase Auth handles the credential and
 /// its uniqueness. Passwords never touch Firestore.
 class AuthRepository {
-  AuthRepository({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
+  AuthRepository({FirebaseAuth? auth}) : _explicitAuth = auth;
 
-  final FirebaseAuth _auth;
+  final FirebaseAuth? _explicitAuth;
+  FirebaseAuth get _auth => _explicitAuth ?? FirebaseAuth.instance;
 
   /// Synthetic e-mail domain for the username-to-email mapping. Not a real
   /// mailbox; it only has to be a syntactically valid, consistent domain.
@@ -55,9 +56,12 @@ class AuthRepository {
     String? preferredPatientId,
     String? fullName,
     required int age,
-    String? sex,
+    required String gender,
   }) async {
     _validateCredentials(username, password);
+    if (gender.trim().isEmpty) {
+      throw const AuthException('Please select your gender.');
+    }
     if (age < 0 || age > 120) {
       throw const AuthException('Please enter an age between 0 and 120.');
     }
@@ -75,7 +79,7 @@ class AuthRepository {
       patientId: patientId,
       fullName: fullName?.trim(),
       age: age,
-      sex: sex,
+      gender: gender.trim(),
       createdAt: DateTime.now(),
     );
 

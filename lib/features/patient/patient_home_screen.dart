@@ -9,14 +9,24 @@ import '../../data/repositories/assessment_repository.dart';
 import '../../domain/risk_engine.dart';
 import '../../state/assessment_flow.dart';
 import '../../state/session_controller.dart';
+import '../cessation/cessation_screen.dart';
+import '../education/education_screen.dart';
+import '../emergency/emergency_screen.dart';
+import '../records/digilocker_screen.dart';
+import '../referral/referral_screen.dart';
+import '../rehabilitation/rehabilitation_screen.dart';
 import 'assessment_detail_screen.dart';
 import 'consent_screen.dart';
 import 'flow_route.dart';
+import 'lesion_reference_dialog.dart';
 import 'risk_assessment_screen.dart';
 
-/// Patient home. Entry point for the flow in spec section 2:
-/// Login/Register → Consent → Risk Assessment → Guided Self-Examination →
-/// Lesion Recording → Risk/Red-Flag Output → Share with Doctor → Follow-up.
+/// Patient experience hub integrating:
+/// 1. Self-Check & Risk Assessment
+/// 2. Education & Awareness (Multilingual)
+/// 3. Medical Records Locker (DigiLocker)
+/// 4. Habit Cessation & Recovery Tracker
+/// 5. Care, Rehabilitation & Screening Directory
 class PatientHomeScreen extends StatefulWidget {
   const PatientHomeScreen({super.key});
 
@@ -25,6 +35,7 @@ class PatientHomeScreen extends StatefulWidget {
 }
 
 class _PatientHomeScreenState extends State<PatientHomeScreen> {
+  int _currentTab = 0;
   List<RiskAssessmentRecord> _history = [];
   bool _loading = true;
 
@@ -37,9 +48,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   Future<void> _load() async {
     final session = context.read<SessionController>();
     final repo = context.read<AssessmentRepository>();
-    final patientId = session.requireUser.patientId;
+    final patientId = session.user?.patientId;
     if (patientId == null) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
       return;
     }
 
@@ -76,8 +87,61 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     await _load();
   }
 
+  Future<void> _openDetail(RiskAssessmentRecord record) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AssessmentDetailScreen(record: record)),
+    );
+    if (mounted) await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentTab,
+        children: [
+          _buildCheckHub(context),
+          const EducationScreen(),
+          const DigiLockerScreen(),
+          const CessationScreen(),
+          const _CareAndRehabHub(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentTab,
+        onDestinationSelected: (idx) => setState(() => _currentTab = idx),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.health_and_safety_outlined),
+            selectedIcon: Icon(Icons.health_and_safety),
+            label: 'Check Hub',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book),
+            label: 'Education',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.folder_shared_outlined),
+            selectedIcon: Icon(Icons.folder_shared),
+            label: 'DigiLocker',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.smoke_free_outlined),
+            selectedIcon: Icon(Icons.smoke_free),
+            label: 'Cessation',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.local_hospital_outlined),
+            selectedIcon: Icon(Icons.local_hospital),
+            label: 'Care & Rehab',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCheckHub(BuildContext context) {
     final theme = Theme.of(context);
     final session = context.watch<SessionController>();
     final user = session.requireUser;
@@ -92,6 +156,17 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
         title: const Text('OralCare'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.photo_library_outlined),
+            tooltip: 'Real Clinical Photos',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const LesionReferenceDialog(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.privacy_tip_outlined),
             tooltip: 'Consent choices',
             onPressed: () async {
@@ -105,7 +180,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
+            tooltip: user.isGuest ? 'Exit guest mode' : 'Sign out',
             onPressed: session.signOut,
           ),
         ],
@@ -116,20 +191,133 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(
-                'Hello${user.fullName != null && user.fullName!.isNotEmpty ? ', ${user.fullName}' : ''}',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+              // Guest Mode Banner if active
+              if (user.isGuest) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: theme.colorScheme.onTertiaryContainer,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'You are exploring in Guest Mode. Data is kept for this '
+                          'session. Create an account to save records or share with clinicians.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onTertiaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Emergency Alert Banner
+              InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const EmergencyScreen()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.error.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.emergency,
+                        color: theme.colorScheme.error,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Emergency Symptoms & 24/7 Helpline',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: theme.colorScheme.onErrorContainer,
+                              ),
+                            ),
+                            Text(
+                              'Bleeding, breathing difficulty, sudden swelling, or high fever',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.colorScheme.onErrorContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        color: theme.colorScheme.error,
+                        size: 20,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Patient ID ${user.patientId ?? '—'} · Age ${user.age ?? '—'}',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              const SizedBox(height: 16),
+
+              // Personalized Hero Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hello${user.fullName != null && user.fullName!.isNotEmpty ? ', ${user.fullName!.split(' ')[0]}' : ''} 👋',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Ready to check your oral health?',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: theme.colorScheme.primaryContainer,
+                    child: Icon(Icons.person, color: theme.colorScheme.primary),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               for (final record in pending)
                 Padding(
@@ -141,36 +329,89 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                   ),
                 ),
 
+              // Prominent CTA Card
               Card(
+                elevation: 4,
+                shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.1),
+                color: theme.colorScheme.primaryContainer.withValues(
+                  alpha: 0.6,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  side: BorderSide.none,
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Check your mouth',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Three steps: your risk factors, a guided look inside '
-                        'your mouth, and recording anything you find. Takes '
-                        'about five minutes.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          height: 1.45,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.health_and_safety,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              'Start Self-Check',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
+                      Text(
+                        'A 3-step guided examination to detect early signs of oral cancer. Takes about 5 minutes.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer
+                              .withValues(alpha: 0.8),
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
                       FilledButton.icon(
                         onPressed: _startAssessment,
-                        icon: const Icon(Icons.play_arrow_rounded),
+                        icon: const Icon(Icons.arrow_forward_rounded),
                         label: Text(
                           _history.isEmpty
-                              ? 'Start my first check'
+                              ? 'Begin your first check'
                               : 'Start a new check',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const LesionReferenceDialog(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('View Clinical Photo Gallery'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: theme.colorScheme.primary,
+                          side: BorderSide(
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -238,12 +479,206 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
       ),
     );
   }
+}
 
-  Future<void> _openDetail(RiskAssessmentRecord record) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AssessmentDetailScreen(record: record)),
+class _CareAndRehabHub extends StatelessWidget {
+  const _CareAndRehabHub();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Care, Centers & Recovery')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Clinical Care & Support Services',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Find certified dental institutions, request clinical appointments, '
+              'or access post-treatment side-effect recovery.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Card 1: Screening Centres & Referral Directory
+            _HubActionCard(
+              title: 'Screening Centres & Dental Colleges',
+              subtitle:
+                  'Search participating Dental Institutes, OMFS, and Oncology OPDs across Karnataka and India.',
+              icon: Icons.local_hospital_outlined,
+              badge: 'CENTRES DIRECTORY',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ReferralScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+
+            // Card 2: Post-Treatment Rehabilitation & Side-Effect Recovery
+            _HubActionCard(
+              title: 'Post-Treatment Rehabilitation & Exercises',
+              subtitle:
+                  'Tailored physiotherapy for surgery, dry mouth (xerostomia) hydration schedule, and radiation recovery.',
+              icon: Icons.fitness_center_outlined,
+              badge: 'REHAB & HYDRATION',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const RehabilitationScreen(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+
+            // Card 3: Clinical Photo Reference Gallery
+            _HubActionCard(
+              title: 'Real Clinical Reference Photographs',
+              subtitle:
+                  'High-clarity photographs of leukoplakia, erythroplakia, ulcers, and oral carcinoma from health archives.',
+              icon: Icons.photo_library_outlined,
+              badge: 'EDUCATIONAL PHOTOS',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const LesionReferenceDialog(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+
+            // Card 4: Emergency Protocols
+            _HubActionCard(
+              title: 'Emergency Guidance & Action Protocols',
+              subtitle:
+                  'First-aid protocols for severe bleeding, breathing distress, sudden swelling, and chemotherapy fever.',
+              icon: Icons.emergency_outlined,
+              badge: '24/7 HELPLINE',
+              isUrgent: true,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const EmergencyScreen()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
-    if (mounted) await _load();
+  }
+}
+
+class _HubActionCard extends StatelessWidget {
+  const _HubActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.badge,
+    required this.onTap,
+    this.isUrgent = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final String badge;
+  final VoidCallback onTap;
+  final bool isUrgent;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isUrgent
+                      ? theme.colorScheme.errorContainer
+                      : theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: isUrgent
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isUrgent
+                            ? theme.colorScheme.error.withValues(alpha: 0.15)
+                            : theme.colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        badge,
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: isUrgent
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.onSecondaryContainer,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

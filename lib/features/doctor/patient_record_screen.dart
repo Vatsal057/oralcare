@@ -123,7 +123,10 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
               children: [
                 DetailRow(label: 'Patient ID', value: _case.patientId),
                 DetailRow(label: 'Age', value: '${patient.age ?? '—'}'),
-                DetailRow(label: 'Sex', value: patient.sex ?? 'Not recorded'),
+                DetailRow(
+                  label: 'Gender',
+                  value: patient.gender ?? 'Not recorded',
+                ),
                 DetailRow(
                   label: 'Assessment',
                   value: AppFormats.dt(_case.assessment.createdAt),

@@ -74,6 +74,28 @@ class SessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Guest-information mode (Section 1 of Final cHeck.docx):
+  /// Allows users to explore education, self-exam, emergency, and screening
+  /// features without creating an account immediately.
+  void continueAsGuest() {
+    _user = AppUser(
+      uid: 'guest_${DateTime.now().millisecondsSinceEpoch}',
+      username: 'Guest User',
+      role: UserRole.patient,
+      patientId: 'GUEST',
+      fullName: 'Guest Visitor',
+      age: 40,
+      isGuest: true,
+      consent: const ConsentFlags(
+        appAndSelfExam: true,
+        photograph: true,
+        shareWithDoctor: false,
+      ),
+      createdAt: DateTime.now(),
+    );
+    notifyListeners();
+  }
+
   Future<void> updateConsent(ConsentFlags consent) async {
     final current = requireUser;
     _user = await _auth.updateConsent(current, consent);

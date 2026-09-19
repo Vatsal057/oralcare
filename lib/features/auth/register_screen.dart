@@ -29,11 +29,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _enrolmentCode = TextEditingController();
   final _clinic = TextEditingController();
 
-  String? _sex;
+  String? _gender;
   bool _busy = false;
   String? _error;
 
-  static const List<String> _sexOptions = [
+  static const List<String> _genderOptions = [
     'Female',
     'Male',
     'Other',
@@ -80,7 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               preferredPatientId: _patientId.text,
               fullName: _fullName.text,
               age: int.parse(_age.text.trim()),
-              sex: _sex,
+              gender: _gender ?? '',
             );
 
       session.adopt(user);
@@ -268,15 +268,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    initialValue: _sex,
+                    initialValue: _gender,
                     decoration: const InputDecoration(
-                      labelText: 'Sex (optional)',
+                      labelText: 'Gender *',
+                      helperText: 'Recorded with your clinical record.',
                       prefixIcon: Icon(Icons.wc_outlined),
                     ),
-                    items: _sexOptions
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    items: _genderOptions
+                        .map((g) => DropdownMenuItem(value: g, child: Text(g)))
                         .toList(),
-                    onChanged: (value) => setState(() => _sex = value),
+                    onChanged: (value) => setState(() => _gender = value),
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Select your gender.' : null,
                   ),
                 ],
 

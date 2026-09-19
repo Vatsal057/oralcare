@@ -53,7 +53,17 @@ class AppUser {
     this.patientId,
     this.fullName,
     this.age,
-    this.sex,
+    this.gender,
+    this.phone,
+    this.email,
+    this.city,
+    this.pincode,
+    this.medicalHistory,
+    this.allergies,
+    this.currentMedications,
+    this.emergencyContactName,
+    this.emergencyContactPhone,
+    this.isGuest = false,
     this.consent = const ConsentFlags(),
     required this.createdAt,
   });
@@ -75,8 +85,21 @@ class AppUser {
   /// Demographic and risk variable (spec Table 1).
   final int? age;
 
-  /// "Sex, where used" — optional by design.
-  final String? sex;
+  /// Gender, collected at registration. Required for new patient accounts; it
+  /// stays nullable because guest profiles and legacy records may not carry it.
+  final String? gender;
+
+  // Additional fields from Section 1 of Final cHeck.docx
+  final String? phone;
+  final String? email;
+  final String? city;
+  final String? pincode;
+  final String? medicalHistory;
+  final String? allergies;
+  final String? currentMedications;
+  final String? emergencyContactName;
+  final String? emergencyContactPhone;
+  final bool isGuest;
 
   final ConsentFlags consent;
   final DateTime createdAt;
@@ -97,7 +120,17 @@ class AppUser {
     String? patientId,
     String? fullName,
     int? age,
-    String? sex,
+    String? gender,
+    String? phone,
+    String? email,
+    String? city,
+    String? pincode,
+    String? medicalHistory,
+    String? allergies,
+    String? currentMedications,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    bool? isGuest,
     ConsentFlags? consent,
     DateTime? createdAt,
   }) => AppUser(
@@ -107,7 +140,17 @@ class AppUser {
     patientId: patientId ?? this.patientId,
     fullName: fullName ?? this.fullName,
     age: age ?? this.age,
-    sex: sex ?? this.sex,
+    gender: gender ?? this.gender,
+    phone: phone ?? this.phone,
+    email: email ?? this.email,
+    city: city ?? this.city,
+    pincode: pincode ?? this.pincode,
+    medicalHistory: medicalHistory ?? this.medicalHistory,
+    allergies: allergies ?? this.allergies,
+    currentMedications: currentMedications ?? this.currentMedications,
+    emergencyContactName: emergencyContactName ?? this.emergencyContactName,
+    emergencyContactPhone: emergencyContactPhone ?? this.emergencyContactPhone,
+    isGuest: isGuest ?? this.isGuest,
     consent: consent ?? this.consent,
     createdAt: createdAt ?? this.createdAt,
   );
@@ -121,7 +164,17 @@ class AppUser {
     'patient_id': patientId,
     'full_name': fullName,
     'age': age,
-    'sex': sex,
+    'gender': gender,
+    'phone': phone,
+    'email': email,
+    'city': city,
+    'pincode': pincode,
+    'medical_history': medicalHistory,
+    'allergies': allergies,
+    'current_medications': currentMedications,
+    'emergency_contact_name': emergencyContactName,
+    'emergency_contact_phone': emergencyContactPhone,
+    'is_guest': isGuest,
     'consent_app': consent.appAndSelfExam,
     'consent_photo': consent.photograph,
     'consent_share': consent.shareWithDoctor,
@@ -136,7 +189,19 @@ class AppUser {
         patientId: data['patient_id'] as String?,
         fullName: data['full_name'] as String?,
         age: (data['age'] as num?)?.toInt(),
-        sex: data['sex'] as String?,
+        // Accounts created before the rename stored this as `sex`, so fall back
+        // to the old key rather than losing the value.
+        gender: (data['gender'] ?? data['sex']) as String?,
+        phone: data['phone'] as String?,
+        email: data['email'] as String?,
+        city: data['city'] as String?,
+        pincode: data['pincode'] as String?,
+        medicalHistory: data['medical_history'] as String?,
+        allergies: data['allergies'] as String?,
+        currentMedications: data['current_medications'] as String?,
+        emergencyContactName: data['emergency_contact_name'] as String?,
+        emergencyContactPhone: data['emergency_contact_phone'] as String?,
+        isGuest: data['is_guest'] as bool? ?? false,
         consent: ConsentFlags(
           appAndSelfExam: data['consent_app'] as bool? ?? false,
           photograph: data['consent_photo'] as bool? ?? false,
