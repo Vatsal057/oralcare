@@ -23,6 +23,10 @@ class LesionDraft {
   bool restrictedMovement = false;
 
   String? photoPath;
+
+  /// The picked image itself, held until the lesion has an id to upload against.
+  /// Kept separate from [photoPath] so the upload works the same on any platform.
+  Uint8List? photoBytes;
   String note = '';
 
   /// Normalised duration in days, used by the engine's two-week rule.

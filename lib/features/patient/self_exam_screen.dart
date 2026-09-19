@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/i18n/clinical_terms.dart';
 import '../../core/widgets/common.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
+import '../../state/locale_controller.dart';
 import 'flow_route.dart';
 import 'lesion_reference_dialog.dart';
 import 'lesion_screen.dart';
@@ -123,7 +125,9 @@ class _SiteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final flow = context.watch<AssessmentFlow>();
     final theme = Theme.of(context);
+    final locale = context.watch<LocaleController>().locale;
     final finding = flow.findingFor(site.key);
+    final siteLabel = ClinicalTerms.examSite(site.key, locale, site.label);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -135,15 +139,9 @@ class _SiteCard extends StatelessWidget {
         children: [
           Stack(
             children: [
-              Image.asset(
-                _imageForSite(site.key),
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 200,
-                  color: theme.colorScheme.surfaceContainerHighest,
-                ),
+              _SiteIllustration(
+                assetPath: _imageForSite(site.key),
+                label: siteLabel,
               ),
               Positioned(
                 bottom: 0,
@@ -179,7 +177,7 @@ class _SiteCard extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          site.label,
+                          siteLabel,
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -279,7 +277,67 @@ class _SiteCard extends StatelessWidget {
   }
 }
 
-String _imageForSite(String key) => switch (key) {
+/// Shows the site illustration, or a labelled placeholder when the drawing is
+/// missing. It never substitutes a different site's picture, because that would
+/// tell the patient to examine the wrong place.
+class _SiteIllustration extends StatelessWidget {
+  const _SiteIllustration({required this.assetPath, required this.label});
+
+  final String? assetPath;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final path = assetPath;
+
+    Widget placeholder() => Container(
+      height: 200,
+      width: double.infinity,
+      color: theme.colorScheme.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_not_supported_outlined,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              'No illustration for $label yet. Follow the written instruction '
+              'below.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (path == null) return placeholder();
+
+    return Image.asset(
+      path,
+      height: 200,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => placeholder(),
+    );
+  }
+}
+
+/// Illustration for a site, or null when none has been drawn yet.
+///
+/// Returning null rather than a default matters: the previous fallback showed
+/// the lips illustration for any unrecognised site, so a new site would quietly
+/// display the wrong anatomy. `8.png` is referenced ahead of time so the throat
+/// illustration appears as soon as the asset is added.
+String? _imageForSite(String key) => switch (key) {
   'lips' => 'assets/images/1.png',
   'inner_cheeks' => 'assets/images/2.png',
   'gums' => 'assets/images/3.png',
@@ -287,5 +345,6 @@ String _imageForSite(String key) => switch (key) {
   'floor_of_mouth' => 'assets/images/5.png',
   'palate' => 'assets/images/6.png',
   'neck' => 'assets/images/7.png',
-  _ => 'assets/images/1.png',
+  'throat' => 'assets/images/8.png',
+  _ => null,
 };

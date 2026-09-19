@@ -36,6 +36,7 @@ class AuthRepository {
   /// also allows enrolment-code registration below.
   static const String _roleClaim = 'role';
   static const String _doctorClaimValue = 'doctor';
+  static const String _coordinatorClaimValue = 'coordinator';
 
   /// Enrolment code required to create a Doctor account.
   ///
@@ -45,7 +46,23 @@ class AuthRepository {
   /// deployment, delete this path and provision clinicians with
   /// `tools/grant_doctor.mjs`, which sets a server-side custom claim, and key
   /// the security rules off that claim.
-  static const String doctorEnrolmentCode = 'ORAL-PILOT-2026';
+  static const String doctorEnrolmentCode = String.fromEnvironment(
+    'ENROLMENT_CODE',
+    defaultValue: 'ORAL-PILOT-2026',
+  );
+
+  /// Whether the app offers clinician self-registration at all.
+  ///
+  /// Build with `--dart-define=ALLOW_ENROLMENT_CODE=false` to remove the path
+  /// entirely: the Doctor login then stops offering account creation, and
+  /// [registerDoctor] refuses. Clinicians must be provisioned with
+  /// `tools/grant_doctor.mjs`, which sets a claim a client cannot forge.
+  ///
+  /// Defaults to true so the pilot keeps working as it does today.
+  static const bool allowEnrolmentCodeRegistration = bool.fromEnvironment(
+    'ALLOW_ENROLMENT_CODE',
+    defaultValue: true,
+  );
 
   String _emailForUsername(String username) =>
       '${username.trim().toLowerCase()}@$_emailDomain';
@@ -155,6 +172,13 @@ class AuthRepository {
     String? fullName,
     String? clinic,
   }) async {
+    if (!allowEnrolmentCodeRegistration) {
+      throw const AuthException(
+        'Clinician accounts are issued by the pilot coordinator and cannot be '
+        'created in the app.',
+      );
+    }
+
     _validateCredentials(username, password);
 
     if (enrolmentCode.trim() != doctorEnrolmentCode) {
@@ -186,6 +210,22 @@ class AuthRepository {
     });
 
     return user;
+  }
+
+  /// True when the account carries the server-set pilot-coordinator claim.
+  ///
+  /// A coordinator sees validation statistics across every shared record rather
+  /// than only their own patients. It cannot be self-assigned: unlike the doctor
+  /// role, there is no profile-field fallback for this one.
+  Future<bool> hasCoordinatorClaim({bool forceRefresh = false}) async {
+    final current = _auth.currentUser;
+    if (current == null) return false;
+    try {
+      final token = await current.getIdTokenResult(forceRefresh);
+      return token.claims?[_roleClaim] == _coordinatorClaimValue;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// True when the signed-in account carries the server-set clinician claim.

@@ -49,8 +49,18 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor';
     }
 
+    // Pilot coordinator: a server-set claim only, never self-assignable. It
+    // exists so algorithm validation can cover the whole cohort instead of one
+    // clinician's own patients, which would split the confusion matrix.
+    //
+    // It grants read across SHARED records only. A record the patient never
+    // shared stays private to them, so consent is still the gate.
+    function isCoordinator() {
+      return isSignedIn() && request.auth.token.role == 'coordinator';
+    }
+
     function isDoctor() {
-      return hasDoctorClaim() || hasDoctorProfile();
+      return hasDoctorClaim() || isCoordinator() || hasDoctorProfile();
     }
 
     // ---- users ------------------------------------------------------------
@@ -148,10 +158,20 @@ service cloud.firestore {
           && resource.data.shared_with_uid == request.auth.uid;
       }
 
+      /// Shared with some clinician. Used only by the coordinator role.
+      function isSharedWithAnyone() {
+        return resource.data.shared_with_doctor == 1;
+      }
+
       // The patient owns their assessment. A clinician may read it only when the
       // patient chose them as the recipient. (Live consent is also re-checked in
       // the app against the user profile.)
-      allow read: if isOwner() || (isDoctor() && isSharedWithMe());
+      // The coordinator branch is deliberately independent of the recipient, so
+      // a cohort-wide query is provably allowed. It still requires the record to
+      // have been shared: see isSharedWithAnyone().
+      allow read: if isOwner()
+        || (isDoctor() && isSharedWithMe())
+        || (isCoordinator() && isSharedWithAnyone());
 
       // Only the owning patient creates or edits an assessment, and the
       // owner_uid must be their own uid.
@@ -169,7 +189,8 @@ service cloud.firestore {
         allow read: if (isSignedIn() && parent().owner_uid == request.auth.uid)
           || (isDoctor()
               && parent().shared_with_doctor == 1
-              && parent().shared_with_uid == request.auth.uid);
+              && parent().shared_with_uid == request.auth.uid)
+          || (isCoordinator() && parent().shared_with_doctor == 1);
         allow create, update, delete: if isSignedIn()
           && parent().owner_uid == request.auth.uid;
       }
@@ -186,7 +207,10 @@ service cloud.firestore {
             && parent().shared_with_uid == request.auth.uid;
         }
         allow read: if (isSignedIn() && parent().owner_uid == request.auth.uid)
-          || isMyPatient();
+          || isMyPatient()
+          // The coordinator reads outcomes to validate the algorithm, but can
+          // never write a clinical finding.
+          || (isCoordinator() && parent().shared_with_doctor == 1);
         // Only the clinician the record was sent to may record findings on it.
         allow write: if isMyPatient();
       }

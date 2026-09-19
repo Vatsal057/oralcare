@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/i18n/clinical_terms.dart';
 import '../../core/widgets/common.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../state/session_controller.dart';
@@ -34,12 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _busy = false;
   String? _error;
 
-  static const List<String> _genderOptions = [
-    'Female',
-    'Male',
-    'Other',
-    'Prefer not to say',
-  ];
+  static const List<String> _genderOptions = ClinicalTerms.genderFormOptions;
 
   @override
   void initState() {

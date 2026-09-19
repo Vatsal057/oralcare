@@ -397,7 +397,11 @@ class _LesionCard extends StatelessWidget {
                 'The patient has not consented to share a photograph, so none '
                 'is shown.',
           )
-        else if (PhotoStore.exists(lesion.photoPath)) ...[
+        // hasUploadedPhoto must come first: PhotoStore.exists is always false
+        // off-device, so relying on it alone hid uploaded photographs from any
+        // clinician who was not on the capturing phone.
+        else if (lesion.hasUploadedPhoto ||
+            PhotoStore.exists(lesion.photoPath)) ...[
           Text(
             'Patient photograph',
             style: theme.textTheme.titleSmall?.copyWith(
@@ -405,11 +409,36 @@ class _LesionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          LocalPhoto(
-            path: lesion.photoPath!,
-            height: 220,
-            onTap: () => _openFullScreen(context, lesion.photoPath!),
-          ),
+          // The uploaded copy is the only one visible from another device, so it
+          // is preferred whenever it exists.
+          if (lesion.hasUploadedPhoto)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                lesion.photoUrl!,
+                height: 220,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox(
+                  height: 220,
+                  child: Center(
+                    child: Text('Could not load the uploaded photograph'),
+                  ),
+                ),
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : const SizedBox(
+                        height: 220,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+              ),
+            )
+          else
+            LocalPhoto(
+              path: lesion.photoPath!,
+              height: 220,
+              onTap: () => _openFullScreen(context, lesion.photoPath!),
+            ),
           const SizedBox(height: 8),
           const NoticeBanner(
             message:

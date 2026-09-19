@@ -226,7 +226,21 @@ privacy review.
 - 11 tests cover the CareConnect modules: education catalogue, personal records,
   cessation maths, referral letter, rehabilitation protocols, and guest mode.
 
-`flutter test` currently runs **102** tests.
+- 10 tests cover the Kannada terminology, including that every red flag and
+  self-examination site has a non-placeholder term, so the translation cannot
+  silently fall out of step with the catalogues.
+- 10 tests cover reminders, proving no scheduling path throws where the platform
+  cannot deliver them.
+- 7 tests cover lesion photographs, separating "on the capturing device" from
+  "a clinician can open it".
+- 4 tests cover the enrolment-code switch. Run them both ways:
+
+```bash
+flutter test
+flutter test --dart-define=ALLOW_ENROLMENT_CODE=false
+```
+
+`flutter test` currently runs **136** tests.
 - A widget smoke test confirms that the entry screen renders both account paths.
 - GitHub Actions runs analysis and tests on every pull request and push to
   `main`.
@@ -244,6 +258,44 @@ appear in the patient's own record instead of being sent as SMS. Sending real
 messages needs an SMS provider, stored phone numbers, and consent to hold them —
 a separate decision for the clinical team.
 
+## Reminders, language, roles and photographs
+
+**Reminders (Android only).** The bell icon opens Reminders: a monthly
+self-check, plus follow-ups and saved visits two days ahead. Notifications are
+optional and are requested, not assumed. The browser cannot deliver them and
+says so. Exact alarms are deliberately not requested, so no special permission
+is needed.
+
+**Kannada for clinical questions.** The translate icon switches the red-flag
+checklist and self-examination between English and Kannada. Every Kannada term
+is taken from the clinical team's illustrated questionnaire rather than
+translated in code; in Kannada mode the English term stays visible underneath,
+because that is what a clinician will ask about. Hindi is intentionally not
+offered for clinical questions: those documents contain no verified Hindi, and
+the education module keeps its own Hindi content.
+
+**Pilot coordinator.** `node grant_doctor.mjs --coordinator --username …` grants
+a claim that makes the validation screen cover every shared record in the pilot
+instead of one clinician's patients. A coordinator cannot write clinical
+findings, is not offered to patients as a recipient, and still cannot see a
+record the patient never shared. The validation screen states which scope it is
+showing.
+
+**Photographs across devices.** Implemented but **requires one console step**:
+open [Storage](https://console.firebase.google.com/project/oral-cancer-pilot-1027-dc3a3/storage)
+and click *Get Started*, then run `firebase deploy --only storage`. Until then
+the app keeps photographs on the capturing device and tells the patient a
+clinician cannot see them. Reading an uploaded photograph requires a clinician
+provisioned with `grant_doctor.mjs`: Storage rules cannot read Firestore, so they
+cannot check consent, and the weaker enrolment-code role is not trusted with
+images.
+
+**Turning off clinician self-registration.** Build with
+`--dart-define=ALLOW_ENROLMENT_CODE=false` to remove the enrolment-code path
+entirely — the Doctor login stops offering account creation and the repository
+refuses it. Use `--dart-define=ENROLMENT_CODE=…` to change the code without
+editing source. Both are covered by tests that run under either build.
+
 ## Known limits of this build
 
 Read these before demonstrating the app:
@@ -255,12 +307,17 @@ Read these before demonstrating the app:
   `screening_centers` Firestore collection and falls back to the copy built into
   the binary, warning the patient when it does. Publish verified entries with
   [`tools/seed_centers.mjs`](tools/seed_centers.mjs).
-- **No notifications.** Reminders appear inside the app only; nothing reaches a
-  patient who does not open it.
-- **Translations cover education content only** (English, Hindi, Kannada). The
-  rest of the interface is English.
-- **Photographs stay on the capturing device.** Firebase Storage is not
-  configured, so a clinician on another device cannot see them.
+- **Reminders are Android-only** and only fire while the app is installed on that
+  device. The browser cannot schedule them.
+- **Translation is partial.** Clinical questions and the education module carry
+  Kannada; the surrounding interface is still English.
+- **Photographs need Firebase Storage enabled** (one console click, see above).
+  Until then they stay on the capturing device.
+- **Family history and immunosuppression are recorded but unscored.** The
+  CareConnect specification lists them without weights, and a test enforces that
+  they do not move a patient's score until the clinical team agrees one.
+- **`assets/images/8.png` is missing**, so the new throat site shows a labelled
+  placeholder instead of an illustration.
 - **Guest mode is not persisted.** Nothing a guest enters is saved.
 
 ## Roadmap

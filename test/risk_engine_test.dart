@@ -479,26 +479,128 @@ void main() {
   });
 
   group('Catalogue integrity', () {
-    test('all ten red flags from the spec are present', () {
-      expect(RedFlagCatalog.items.length, 10);
+    test('all ten red flags from the original spec are present', () {
+      // Asserted by key rather than by count, so adding a symptom cannot make
+      // this pass while silently dropping one of the original ten.
+      expect(
+        RedFlagCatalog.items.map((i) => i.key),
+        containsAll([
+          'non_healing_ulcer',
+          'red_patch',
+          'white_patch',
+          'red_and_white_patch',
+          'lump_thickening',
+          'unexplained_bleeding',
+          'persistent_numbness',
+          'difficulty_swallowing',
+          'restricted_movement',
+          'persistent_neck_lump',
+        ]),
+      );
       expect(
         RedFlagCatalog.items.map((i) => i.key).toSet().length,
-        10,
+        RedFlagCatalog.items.length,
         reason: 'keys must be unique',
       );
     });
 
-    test('all seven self-examination sites from the spec are present', () {
-      expect(ExamSiteCatalog.sites.length, 7);
+    test('the CareConnect symptoms were added to the checklist', () {
       expect(
-        ExamSiteCatalog.sites.map((s) => s.key).toSet().length,
-        7,
-        reason: 'keys must be unique',
+        RedFlagCatalog.items.map((i) => i.key),
+        containsAll([
+          'loose_teeth',
+          'difficulty_speaking',
+          'unexplained_weight_loss',
+        ]),
       );
+    });
+
+    test('every red flag has a label', () {
+      for (final item in RedFlagCatalog.items) {
+        expect(item.label.trim(), isNotEmpty, reason: item.key);
+        expect(RedFlagCatalog.labelFor(item.key), item.label);
+      }
+    });
+
+    test(
+      'all seven self-examination sites from the original spec are present',
+      () {
+        expect(
+          ExamSiteCatalog.sites.map((s) => s.key),
+          containsAll([
+            'lips',
+            'inner_cheeks',
+            'gums',
+            'tongue',
+            'floor_of_mouth',
+            'palate',
+            'neck',
+          ]),
+        );
+        expect(
+          ExamSiteCatalog.sites.map((s) => s.key).toSet().length,
+          ExamSiteCatalog.sites.length,
+          reason: 'keys must be unique',
+        );
+      },
+    );
+
+    test('the throat site was added, with an instruction', () {
+      final throat = ExamSiteCatalog.sites.firstWhere((s) => s.key == 'throat');
+      expect(throat.instruction.trim(), isNotEmpty);
     });
 
     test('all thirteen risk variables from Table 2 are present', () {
-      expect(RiskCatalog.variables.length, 13);
+      expect(
+        RiskCatalog.variables.map((v) => v.key),
+        containsAll([
+          RiskKeys.ageBand,
+          RiskKeys.smoking,
+          RiskKeys.smokelessTobacco,
+          RiskKeys.areca,
+          RiskKeys.gutkha,
+          RiskKeys.exposureDuration,
+          RiskKeys.useFrequency,
+          RiskKeys.alcohol,
+          RiskKeys.previousOpmd,
+          RiskKeys.previousOscc,
+          RiskKeys.suspiciousLesion,
+          RiskKeys.lesionDuration,
+          RiskKeys.neckLump,
+        ]),
+      );
+    });
+
+    test('family history and immunosuppression are recorded but unscored', () {
+      // The CareConnect spec lists both without weights. They must not move a
+      // patient's score until the clinical team agrees one.
+      for (final key in [RiskKeys.familyHistory, RiskKeys.immunosuppression]) {
+        final variable = RiskCatalog.variableFor(key);
+        expect(variable.role, RiskVariableRole.exposureOnly, reason: key);
+        expect(variable.note, isNotNull, reason: key);
+        for (final option in variable.options) {
+          expect(
+            option.unweighted || option.unknown,
+            isTrue,
+            reason: '$key option ${option.value} must not carry a score',
+          );
+        }
+      }
+
+      // Proven, not assumed: answering Yes to both leaves the total untouched.
+      final baseline = <String, String?>{
+        for (final v in RiskCatalog.askedVariables) v.key: null,
+      };
+      final withoutNewFactors = RiskEngine.evaluate(answers: baseline, age: 30);
+      final withNewFactors = RiskEngine.evaluate(
+        answers: {
+          ...baseline,
+          RiskKeys.familyHistory: AnswerValues.yes,
+          RiskKeys.immunosuppression: AnswerValues.yes,
+        },
+        age: 30,
+      );
+      expect(withNewFactors.totalScore, withoutNewFactors.totalScore);
     });
 
     test('variable keys are unique', () {
@@ -518,7 +620,10 @@ void main() {
     });
 
     test('only the age band is derived', () {
-      expect(RiskCatalog.askedVariables.length, 12);
+      expect(
+        RiskCatalog.askedVariables.length,
+        RiskCatalog.variables.length - 1,
+      );
       expect(
         RiskCatalog.askedVariables.any((v) => v.key == RiskKeys.ageBand),
         isFalse,

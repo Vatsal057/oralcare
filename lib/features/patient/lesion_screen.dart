@@ -72,6 +72,9 @@ class _LesionScreenState extends State<LesionScreen> {
       final stored = await PhotoStore.store(picked.path, flow.patientId);
       await PhotoStore.delete(flow.lesion.photoPath);
       flow.lesion.photoPath = stored;
+      // Held for upload once the lesion has an id, so a clinician on another
+      // device can see it. Read now, because the picked file is temporary.
+      flow.lesion.photoBytes = await picked.readAsBytes();
       flow.touchLesion();
     } catch (e) {
       if (mounted) {
@@ -86,6 +89,7 @@ class _LesionScreenState extends State<LesionScreen> {
     final flow = context.read<AssessmentFlow>();
     await PhotoStore.delete(flow.lesion.photoPath);
     flow.lesion.photoPath = null;
+    flow.lesion.photoBytes = null;
     flow.touchLesion();
   }
 

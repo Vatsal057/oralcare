@@ -274,7 +274,7 @@ class _LesionCard extends StatelessWidget {
         ),
         if (lesion.note != null && lesion.note!.isNotEmpty)
           DetailRow(label: 'Note', value: lesion.note!),
-        if (PhotoStore.exists(lesion.photoPath)) ...[
+        if (lesion.hasUploadedPhoto || PhotoStore.exists(lesion.photoPath)) ...[
           const SizedBox(height: 12),
           Text(
             'Photograph',
@@ -283,7 +283,30 @@ class _LesionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          LocalPhoto(path: lesion.photoPath!, height: 180),
+          if (lesion.hasUploadedPhoto)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                lesion.photoUrl!,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox(
+                  height: 180,
+                  child: Center(child: Text('Could not load the photograph')),
+                ),
+              ),
+            )
+          else
+            LocalPhoto(path: lesion.photoPath!, height: 180),
+          if (!lesion.hasUploadedPhoto) ...[
+            const SizedBox(height: 8),
+            const NoticeBanner(
+              message:
+                  'This photograph is only on the device that took it, so a '
+                  'clinician cannot see it.',
+            ),
+          ],
         ],
       ],
     );

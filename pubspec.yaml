@@ -43,6 +43,13 @@ dependencies:
   firebase_auth: ^6.6.1
   cloud_firestore: ^6.9.0
   google_fonts: ^8.2.1
+  # Scheduled reminders (Section I). Android only: the plugin has no web
+  # implementation, so every call is guarded by a platform check.
+  flutter_local_notifications: ^19.4.2
+  timezone: ^0.10.1
+  # Cross-device lesion photographs. Requires Firebase Storage to be enabled on
+  # the project; the app degrades to device-local photos when it is not.
+  firebase_storage: ^13.1.0
 
 dev_dependencies:
   flutter_test:

@@ -18,8 +18,10 @@ import '../rehabilitation/rehabilitation_screen.dart';
 import 'assessment_detail_screen.dart';
 import 'consent_screen.dart';
 import 'flow_route.dart';
+import '../../state/locale_controller.dart';
 import 'lesion_reference_dialog.dart';
 import 'profile_screen.dart';
+import 'reminders_screen.dart';
 import 'risk_assessment_screen.dart';
 
 /// Patient experience hub integrating:
@@ -166,6 +168,22 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                 ),
               );
             },
+          ),
+          // Language switcher. Clinical questions carry verified Kannada
+          // wording; the rest of the interface stays English for now.
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            tooltip: 'Reminders',
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const RemindersScreen())),
+          ),
+          IconButton(
+            icon: const Icon(Icons.translate),
+            tooltip: context.watch<LocaleController>().isKannada
+                ? 'Switch to English'
+                : 'ಕನ್ನಡಕ್ಕೆ ಬದಲಿಸಿ',
+            onPressed: context.read<LocaleController>().toggle,
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),

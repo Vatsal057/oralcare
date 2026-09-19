@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/clinical_notices.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
+import '../../data/photo_cloud_store.dart';
 import '../../data/repositories/assessment_repository.dart';
 import '../../domain/follow_up_policy.dart';
 import '../../domain/risk_catalog.dart';
@@ -40,6 +41,8 @@ class _ResultScreenState extends State<ResultScreen> {
   Future<void> _commit() async {
     final flow = context.read<AssessmentFlow>();
     final repo = context.read<AssessmentRepository>();
+    // Resolved up front: this method awaits several writes before using it.
+    final photos = context.read<PhotoCloudStore>();
 
     try {
       final result = flow.evaluate();
@@ -61,9 +64,31 @@ class _ResultScreenState extends State<ResultScreen> {
       );
 
       if (flow.lesion.hasAnyContent) {
-        await repo.saveLesion(
+        final lesionId = await repo.saveLesion(
           flow.lesion.toRecord(patientId: flow.patientId, assessmentId: id),
         );
+
+        // Upload the photograph now that the lesion has an id. A device-local
+        // path means nothing to a clinician on another device; the uploaded copy
+        // is the only one they can open. Failure is not fatal — the local copy
+        // stays, and the record simply carries no URL.
+        final bytes = flow.lesion.photoBytes;
+        final ownerUid = repo.currentUid;
+        if (bytes != null && ownerUid != null && flow.photographAllowed) {
+          final url = await photos.upload(
+            ownerUid: ownerUid,
+            assessmentId: id,
+            lesionId: lesionId,
+            bytes: bytes,
+          );
+          if (url != null) {
+            await repo.setLesionPhotoUrl(
+              assessmentId: id,
+              lesionId: lesionId,
+              url: url,
+            );
+          }
+        }
       }
 
       if (!mounted) return;

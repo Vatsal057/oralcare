@@ -295,6 +295,7 @@ class LesionRecord {
     this.difficultySwallowing = false,
     this.restrictedMovement = false,
     this.photoPath,
+    this.photoUrl,
     this.note,
   });
 
@@ -318,11 +319,25 @@ class LesionRecord {
   final bool restrictedMovement;
 
   /// Only ever set when photograph consent is granted.
+  ///
+  /// A path on the capturing device. It is meaningless to any other device, so
+  /// it is not what a clinician reads.
   final String? photoPath;
+
+  /// Download URL of the uploaded copy, when Firebase Storage is available.
+  ///
+  /// This is the only form a clinician on another device can open, which is why
+  /// it is stored separately from [photoPath] rather than replacing it.
+  final String? photoUrl;
 
   final String? note;
 
-  bool get hasPhoto => photoPath != null && photoPath!.isNotEmpty;
+  /// True when a photo exists in any form.
+  bool get hasPhoto => hasLocalPhoto || hasUploadedPhoto;
+
+  bool get hasLocalPhoto => photoPath != null && photoPath!.isNotEmpty;
+
+  bool get hasUploadedPhoto => photoUrl != null && photoUrl!.isNotEmpty;
 
   /// Symptom labels reported as present, for compact display to the doctor.
   List<String> get reportedSymptoms => [
@@ -349,6 +364,7 @@ class LesionRecord {
     bool? difficultySwallowing,
     bool? restrictedMovement,
     String? photoPath,
+    String? photoUrl,
     String? note,
   }) => LesionRecord(
     id: id ?? this.id,
@@ -366,6 +382,7 @@ class LesionRecord {
     difficultySwallowing: difficultySwallowing ?? this.difficultySwallowing,
     restrictedMovement: restrictedMovement ?? this.restrictedMovement,
     photoPath: photoPath ?? this.photoPath,
+    photoUrl: photoUrl ?? this.photoUrl,
     note: note ?? this.note,
   );
 
@@ -385,6 +402,7 @@ class LesionRecord {
     'swallowing': difficultySwallowing ? 1 : 0,
     'restricted_movement': restrictedMovement ? 1 : 0,
     'photo_path': photoPath,
+    'photo_url': photoUrl,
     'note': note,
   };
 
@@ -407,6 +425,7 @@ class LesionRecord {
     difficultySwallowing: (row['swallowing'] as int? ?? 0) == 1,
     restrictedMovement: (row['restricted_movement'] as int? ?? 0) == 1,
     photoPath: row['photo_path'] as String?,
+    photoUrl: row['photo_url'] as String?,
     note: row['note'] as String?,
   );
 }

@@ -78,6 +78,34 @@ class ClinicalRepository {
   /// Every consented case, for the validation screen (spec section 4).
   Future<List<PatientCase>> allSharedCases() => queue();
 
+  /// Every shared record in the pilot, for cohort-wide validation.
+  ///
+  /// Only a coordinator can read this: the rules allow it on the coordinator
+  /// claim alone, and the `shared_with_doctor` filter is required both because
+  /// rules are not filters and because a record the patient never shared must
+  /// stay out of the statistics entirely.
+  Future<List<PatientCase>> cohortCases() async {
+    final query = await FirestoreRefs.assessments()
+        .where('shared_with_doctor', isEqualTo: 1)
+        .get();
+
+    final cases = <PatientCase>[];
+    for (final doc in query.docs) {
+      final assessment = _assessmentFromDoc(doc);
+      final built = await _buildCase(
+        assessment,
+        ownerUid: doc.data()['owner_uid'] as String?,
+      );
+      if (built == null) continue;
+      cases.add(built);
+    }
+
+    cases.sort(
+      (a, b) => b.assessment.createdAt.compareTo(a.assessment.createdAt),
+    );
+    return cases;
+  }
+
   Future<void> saveClinicianAssessment(ClinicianAssessmentRecord record) async {
     await FirestoreRefs.clinical(
       record.assessmentId,

@@ -107,6 +107,8 @@ class RiskKeys {
   static const alcohol = 'alcohol';
   static const previousOpmd = 'previous_opmd';
   static const previousOscc = 'previous_oscc';
+  static const familyHistory = 'family_history';
+  static const immunosuppression = 'immunosuppression';
   static const suspiciousLesion = 'suspicious_lesion';
   static const lesionDuration = 'lesion_duration';
   static const neckLump = 'neck_lump';
@@ -251,6 +253,38 @@ class RiskCatalog {
         RiskOption(AnswerValues.yes, 'Yes', score: 5),
       ],
     ),
+    // Both of the following are listed as risk factors by the CareConnect
+    // specification, which gives no weights for them. Inventing a weight would
+    // silently change every patient's score, so they are recorded and left
+    // unscored until the clinical team sets a value — the same treatment the
+    // original specification gives gutkha.
+    RiskVariable(
+      key: RiskKeys.familyHistory,
+      label: 'Family history of cancer',
+      role: RiskVariableRole.exposureOnly,
+      note:
+          'Recorded for validation. No weight has been agreed yet, so this '
+          'answer does not change the score in this pilot build.',
+      options: [
+        RiskOption(AnswerValues.no, 'No', unweighted: true),
+        RiskOption(AnswerValues.yes, 'Yes', unweighted: true),
+        RiskOption(AnswerValues.dontKnow, 'Don\'t know', unknown: true),
+      ],
+    ),
+    RiskVariable(
+      key: RiskKeys.immunosuppression,
+      label: 'Weakened immune system',
+      role: RiskVariableRole.exposureOnly,
+      note:
+          'For example HIV, an organ transplant, or long-term steroid or '
+          'immunosuppressant treatment. Recorded for validation; no weight has '
+          'been agreed yet.',
+      options: [
+        RiskOption(AnswerValues.no, 'No', unweighted: true),
+        RiskOption(AnswerValues.yes, 'Yes', unweighted: true),
+        RiskOption(AnswerValues.dontKnow, 'Don\'t know', unknown: true),
+      ],
+    ),
     RiskVariable(
       key: RiskKeys.suspiciousLesion,
       label: 'Do you have a suspicious oral lesion or symptom right now?',
@@ -339,6 +373,12 @@ class RedFlagCatalog {
     RedFlag('difficulty_swallowing', 'Difficulty swallowing'),
     RedFlag('restricted_movement', 'Restricted tongue or jaw movement'),
     RedFlag('persistent_neck_lump', 'Persistent neck lump'),
+    // Added from the CareConnect symptom list. Like every other red flag, these
+    // escalate to "professional check required" once they have persisted for two
+    // weeks or more.
+    RedFlag('loose_teeth', 'Teeth loosening without an obvious cause'),
+    RedFlag('difficulty_speaking', 'Difficulty speaking'),
+    RedFlag('unexplained_weight_loss', 'Unexplained weight loss'),
   ];
 
   static String labelFor(String key) => items
@@ -364,6 +404,12 @@ class ExamSiteCatalog {
     ExamSite('tongue', 'Tongue', 'Inspect the top, both sides and underside.'),
     ExamSite('floor_of_mouth', 'Floor of mouth', 'Inspect under the tongue.'),
     ExamSite('palate', 'Palate', 'Inspect the roof of the mouth.'),
+    ExamSite(
+      'throat',
+      'Back of the throat',
+      'Open wide and look as far back as you comfortably can. Skip this if you '
+          'cannot see clearly.',
+    ),
     ExamSite('neck', 'Neck', 'Feel for any new lump.'),
   ];
 

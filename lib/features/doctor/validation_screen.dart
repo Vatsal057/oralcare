@@ -8,6 +8,7 @@ import '../../data/models/patient_case.dart';
 import '../../data/repositories/clinical_repository.dart';
 import '../../domain/risk_engine.dart';
 import '../../domain/validation_service.dart';
+import '../../state/session_controller.dart';
 import 'patient_record_screen.dart';
 
 /// Outcome / validation database view (spec section 4 and Table 10).
@@ -26,6 +27,8 @@ class _ValidationScreenState extends State<ValidationScreen> {
   ValidationSummary? _summary;
   bool _loading = true;
   String? _error;
+  bool _cohortWide = false;
+  int _caseCount = 0;
 
   @override
   void initState() {
@@ -38,10 +41,20 @@ class _ValidationScreenState extends State<ValidationScreen> {
       _loading = true;
       _error = null;
     });
+    final clinical = context.read<ClinicalRepository>();
+    final auth = context.read<SessionController>().auth;
+
     try {
-      final cases = await context.read<ClinicalRepository>().allSharedCases();
+      // A coordinator validates the whole pilot; a clinician sees only their own
+      // patients, and the scope is stated on screen either way.
+      final cohortWide = await auth.hasCoordinatorClaim();
+      final cases = cohortWide
+          ? await clinical.cohortCases()
+          : await clinical.allSharedCases();
       if (!mounted) return;
       setState(() {
+        _cohortWide = cohortWide;
+        _caseCount = cases.length;
         _summary = ValidationService.summarise(cases);
         _loading = false;
       });
@@ -101,6 +114,20 @@ class _ValidationScreenState extends State<ValidationScreen> {
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  NoticeBanner(
+                    title: _cohortWide
+                        ? 'Whole pilot cohort'
+                        : 'Your patients only',
+                    message: _cohortWide
+                        ? 'You hold the coordinator role, so these figures '
+                              'cover all $_caseCount shared record(s) in the '
+                              'pilot.'
+                        : 'These figures cover only the $_caseCount record(s) '
+                              'sent to you. They are not the whole cohort, so '
+                              'do not read them as the pilot\'s performance.',
+                    severity: NoticeSeverity.info,
+                  ),
+                  const SizedBox(height: 12),
                   const NoticeBanner(
                     title: 'Read this first',
                     message: ClinicalNotices.validationCaveat,

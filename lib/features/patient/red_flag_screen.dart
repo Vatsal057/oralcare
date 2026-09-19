@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
+import '../../core/i18n/clinical_terms.dart';
 import '../../core/widgets/common.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
+import '../../state/locale_controller.dart';
 import 'flow_route.dart';
 import 'self_exam_screen.dart';
 
@@ -20,6 +22,7 @@ class RedFlagScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final flow = context.watch<AssessmentFlow>();
     final theme = Theme.of(context);
+    final locale = context.watch<LocaleController>().locale;
 
     final selectedCount = flow.redFlags.length;
     final durationLabel = RiskCatalog.variableFor(
@@ -56,7 +59,19 @@ class RedFlagScreen extends StatelessWidget {
                   for (var i = 0; i < RedFlagCatalog.items.length; i++) ...[
                     if (i > 0) const Divider(height: 1),
                     SwitchListTile(
-                      title: Text(RedFlagCatalog.items[i].label),
+                      title: Text(
+                        ClinicalTerms.redFlag(
+                          RedFlagCatalog.items[i].key,
+                          locale,
+                          RedFlagCatalog.items[i].label,
+                        ),
+                      ),
+                      // The English term stays visible in Kannada mode: these
+                      // findings are what a clinician will ask about, and the
+                      // patient may need to repeat them at the clinic.
+                      subtitle: locale == AppLocale.kannada
+                          ? Text(RedFlagCatalog.items[i].label)
+                          : null,
                       value: flow.isRedFlagSet(RedFlagCatalog.items[i].key),
                       onChanged: (value) =>
                           flow.setRedFlag(RedFlagCatalog.items[i].key, value),

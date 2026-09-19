@@ -77,6 +77,20 @@ class AssessmentRepository {
     });
   }
 
+  /// The signed-in patient's uid, used as the photograph storage folder.
+  String? get currentUid => _uid;
+
+  /// Records the uploaded photograph's URL against a saved lesion.
+  Future<void> setLesionPhotoUrl({
+    required int assessmentId,
+    required int lesionId,
+    required String url,
+  }) async {
+    await FirestoreRefs.lesions(
+      assessmentId,
+    ).doc(lesionId.toString()).update({'photo_url': url});
+  }
+
   Future<void> setFollowUp({
     required int assessmentId,
     DateTime? due,

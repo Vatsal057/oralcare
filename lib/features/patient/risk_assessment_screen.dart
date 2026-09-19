@@ -104,6 +104,8 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                 _question(flow, RiskKeys.smokelessTobacco),
                 _question(flow, RiskKeys.areca),
                 _question(flow, RiskKeys.gutkha),
+                _question(flow, RiskKeys.familyHistory),
+                _question(flow, RiskKeys.immunosuppression),
                 if (flow.hasExposure) ...[
                   _question(flow, RiskKeys.exposureDuration),
                   _question(flow, RiskKeys.useFrequency),

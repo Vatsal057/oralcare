@@ -12,6 +12,11 @@
 //   node grant_doctor.mjs --username dr.smith            # existing account
 //   node grant_doctor.mjs --username dr.smith --revoke
 //
+// Add --coordinator to grant the pilot-coordinator role instead. A coordinator
+// sees validation statistics across every SHARED record in the pilot, rather
+// than only their own patients, and can never write a clinical finding. Records
+// a patient has not shared remain invisible to them.
+//
 // Credentials, in order of preference:
 //   GOOGLE_APPLICATION_CREDENTIALS=/path/service-account.json
 //   or `gcloud auth application-default login` (Application Default Credentials)
@@ -27,12 +32,18 @@ import { getFirestore } from 'firebase-admin/firestore';
 const EMAIL_DOMAIN = 'oralpilot.app';
 const DOCTOR_ROLE = 'doctor';
 
+/// Pilot coordinator: sees validation statistics across every shared record.
+/// Cannot be self-assigned, and cannot write clinical findings.
+const COORDINATOR_ROLE = 'coordinator';
+
 function parseArgs(argv) {
-  const args = { revoke: false };
+  const args = { revoke: false, coordinator: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--revoke') {
       args.revoke = true;
+    } else if (key === '--coordinator') {
+      args.coordinator = true;
     } else if (key.startsWith('--')) {
       const value = argv[i + 1];
       if (value === undefined || value.startsWith('--')) {
@@ -123,7 +134,8 @@ async function main() {
     args.name,
   );
 
-  await auth.setCustomUserClaims(user.uid, { role: DOCTOR_ROLE });
+  const role = args.coordinator ? COORDINATOR_ROLE : DOCTOR_ROLE;
+  await auth.setCustomUserClaims(user.uid, { role });
   // The claim is embedded in the ID token, so old tokens must be invalidated.
   await auth.revokeRefreshTokens(user.uid);
 
@@ -148,21 +160,35 @@ async function main() {
   // Public directory entry: this is what a patient picks from when choosing who
   // to send a record to. Deliberately minimal — no patient data, no private
   // contact details.
-  await db.collection('doctors').doc(user.uid).set(
-    {
-      username,
-      full_name: args.name ?? null,
-      clinic: args.clinic ?? null,
-      created_at: new Date().toISOString(),
-    },
-    { merge: true },
-  );
+  //
+  // A coordinator is not listed: they analyse outcomes rather than treat, so
+  // offering them as a recipient would invite records they should not receive.
+  if (!args.coordinator) {
+    await db.collection('doctors').doc(user.uid).set(
+      {
+        username,
+        full_name: args.name ?? null,
+        clinic: args.clinic ?? null,
+        created_at: new Date().toISOString(),
+      },
+      { merge: true },
+    );
+  }
 
   console.log(
-    `${created ? 'Created' : 'Updated'} clinician account ${username} (${user.uid}).`,
+    `${created ? 'Created' : 'Updated'} ${args.coordinator ? 'coordinator' : 'clinician'} ` +
+      `account ${username} (${user.uid}).`,
   );
-  console.log('Listed in the patient-facing directory as: ' +
-    `${args.name || username}${args.clinic ? ` · ${args.clinic}` : ''}`);
+  if (args.coordinator) {
+    console.log(
+      'Role: coordinator. Sees validation statistics across every SHARED ' +
+        'record, cannot write clinical findings, and is NOT offered to patients ' +
+        'as a recipient.',
+    );
+  } else {
+    console.log('Listed in the patient-facing directory as: ' +
+      `${args.name || username}${args.clinic ? ` · ${args.clinic}` : ''}`);
+  }
   console.log(`Sign in with username: ${username}`);
   console.log('If that account was already open in the app, sign out and in again.');
 }

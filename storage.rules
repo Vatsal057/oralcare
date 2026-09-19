@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// Security rules for consented lesion photographs.
+//
+// Layout: patient_photos/{ownerUid}/{assessmentId}/{lesionId}.jpg
+// The owner's uid is the first path segment, so a patient can only write beneath
+// their own folder and can never overwrite anyone else's image.
+//
+// Clinician access deliberately requires a SERVER-SET custom claim, not the
+// pilot's client-written profile role. Storage rules cannot read Firestore, so
+// they cannot check the consent flag or which clinician a record was addressed
+// to. Photographs are the most sensitive item in this app, so the weaker
+// enrolment-code role is not accepted here: a clinician must be provisioned with
+// tools/grant_doctor.mjs to view them.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isProvisionedClinician() {
+      return isSignedIn()
+        && (request.auth.token.role == 'doctor'
+            || request.auth.token.role == 'coordinator');
+    }
+
+    // 8 MB ceiling and images only: an upload path that accepts arbitrary files
+    // of any size is an abuse vector.
+    function isReasonableImage() {
+      return request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /patient_photos/{ownerUid}/{assessmentId}/{fileName} {
+      allow read: if (isSignedIn() && request.auth.uid == ownerUid)
+        || isProvisionedClinician();
+
+      allow write: if isSignedIn()
+        && request.auth.uid == ownerUid
+        && isReasonableImage();
+
+      // The patient may withdraw their own photograph. A clinician may not
+      // delete clinical evidence.
+      allow delete: if isSignedIn() && request.auth.uid == ownerUid;
+    }
+
+    // Everything else is denied.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

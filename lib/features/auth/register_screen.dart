@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/i18n/clinical_terms.dart';
 import '../../core/widgets/common.dart';
 import '../../data/models/app_user.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -38,12 +39,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _busy = false;
   String? _error;
 
-  static const List<String> _genderOptions = [
-    'Female',
-    'Male',
-    'Other',
-    'Prefer not to say',
-  ];
+  /// Matches the clinical team's questionnaire options.
+  static const List<String> _genderOptions = ClinicalTerms.genderFormOptions;
 
   bool get _isDoctor => widget.role == UserRole.doctor;
 
