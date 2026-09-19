@@ -2,7 +2,7 @@
 
 **Build:** pilot, commit `c1bbb75`
 **Platforms:** Android (full), Web (full except camera capture)
-**Live web build:** https://oral-cancer-pilot-1027-dc3a3.web.app
+**Live web build:** https://oralcare.web.app (the original `oral-cancer-pilot-1027-dc3a3.web.app` also stays current — both sites receive every deploy)
 **Backend:** Firebase Authentication + Cloud Firestore (free Spark plan; no Cloud Storage, no Cloud Functions)
 **Verification at time of writing:** `flutter analyze` clean · 156 tests pass · web and debug APK build
 

@@ -138,7 +138,22 @@ flutter run -d chrome
 flutter build web
 ```
 
-Firebase Hosting serves the full app from `build/web`.
+Firebase Hosting serves the full app from `build/web`. `firebase.json` declares
+**two Hosting sites fed by the same build** via the deploy targets `app` and
+`legacy`: a short readable address, and the original project-id site. A Hosting
+site ID cannot be renamed, so a readable URL means adding a second site — and
+leaving the first out of the deploy would make links already in circulation serve
+an old build indefinitely. One `firebase deploy --only hosting` updates both.
+
+Map the targets to your own site IDs before deploying:
+
+```bash
+firebase target:apply hosting app    YOUR_SHORT_SITE_ID
+firebase target:apply hosting legacy YOUR_PROJECT_ID
+```
+
+The mapping is written to `.firebaserc`, which is gitignored, so `firebase.json`
+stays free of live project identifiers.
 
 The separate [`website/`](website) package remains a static, data-free project
 information site if it is needed for a different Hosting target.
