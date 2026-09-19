@@ -47,9 +47,6 @@ dependencies:
   # implementation, so every call is guarded by a platform check.
   flutter_local_notifications: ^19.4.2
   timezone: ^0.10.1
-  # Cross-device lesion photographs. Requires Firebase Storage to be enabled on
-  # the project; the app degrades to device-local photos when it is not.
-  firebase_storage: ^13.1.0
 
 dev_dependencies:
   flutter_test:

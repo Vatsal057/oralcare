@@ -4,10 +4,9 @@ import 'package:provider/provider.dart';
 import '../../core/clinical_notices.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/local_photo.dart';
+import '../../core/widgets/lesion_photo_view.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/models/clinical_models.dart';
-import '../../data/photo_store.dart';
 import '../../data/repositories/assessment_repository.dart';
 import '../../data/repositories/clinical_repository.dart';
 import '../../domain/risk_catalog.dart';
@@ -274,7 +273,10 @@ class _LesionCard extends StatelessWidget {
         ),
         if (lesion.note != null && lesion.note!.isNotEmpty)
           DetailRow(label: 'Note', value: lesion.note!),
-        if (lesion.hasUploadedPhoto || PhotoStore.exists(lesion.photoPath)) ...[
+        if (LesionPhotoView.isViewable(
+          lesion: lesion,
+          assessmentId: lesion.assessmentId,
+        )) ...[
           const SizedBox(height: 12),
           Text(
             'Photograph',
@@ -283,23 +285,12 @@ class _LesionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          if (lesion.hasUploadedPhoto)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                lesion.photoUrl!,
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox(
-                  height: 180,
-                  child: Center(child: Text('Could not load the photograph')),
-                ),
-              ),
-            )
-          else
-            LocalPhoto(path: lesion.photoPath!, height: 180),
-          if (!lesion.hasUploadedPhoto) ...[
+          LesionPhotoView(
+            assessmentId: lesion.assessmentId,
+            lesion: lesion,
+            height: 180,
+          ),
+          if (!lesion.hasRemotePhoto) ...[
             const SizedBox(height: 8),
             const NoticeBanner(
               message:

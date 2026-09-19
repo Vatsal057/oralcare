@@ -6,7 +6,7 @@ import 'core/theme.dart';
 import 'data/models/app_user.dart';
 import 'data/repositories/appointment_repository.dart';
 import 'data/repositories/assessment_repository.dart';
-import 'data/photo_cloud_store.dart';
+import 'data/photo_document_store.dart';
 import 'data/repositories/screening_center_repository.dart';
 import 'data/repositories/cessation_repository.dart';
 import 'data/repositories/clinical_repository.dart';
@@ -36,7 +36,7 @@ class OralCancerApp extends StatelessWidget {
         Provider(create: (_) => const DoctorDirectoryRepository()),
         Provider(create: (_) => AppointmentRepository()),
         Provider(create: (_) => ScreeningCenterRepository()),
-        Provider(create: (_) => PhotoCloudStore()),
+        Provider(create: (_) => PhotoDocumentStore()),
         Provider(create: (_) => DigiLockerRepository()),
         Provider(create: (_) => CessationRepository()),
       ],

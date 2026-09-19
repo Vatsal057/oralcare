@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/clinical_notices.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
-import '../../data/photo_cloud_store.dart';
+import '../../data/photo_document_store.dart';
 import '../../data/repositories/assessment_repository.dart';
 import '../../domain/follow_up_policy.dart';
 import '../../domain/risk_catalog.dart';
@@ -32,6 +32,10 @@ class _ResultScreenState extends State<ResultScreen> {
   bool _shared = false;
   String? _error;
 
+  /// null when no photograph was taken; false when one was taken but could not
+  /// be stored where a clinician can read it.
+  bool? _photoStored;
+
   @override
   void initState() {
     super.initState();
@@ -42,7 +46,8 @@ class _ResultScreenState extends State<ResultScreen> {
     final flow = context.read<AssessmentFlow>();
     final repo = context.read<AssessmentRepository>();
     // Resolved up front: this method awaits several writes before using it.
-    final photos = context.read<PhotoCloudStore>();
+    final photos = context.read<PhotoDocumentStore>();
+    bool? photoStored;
 
     try {
       final result = flow.evaluate();
@@ -68,26 +73,25 @@ class _ResultScreenState extends State<ResultScreen> {
           flow.lesion.toRecord(patientId: flow.patientId, assessmentId: id),
         );
 
-        // Upload the photograph now that the lesion has an id. A device-local
-        // path means nothing to a clinician on another device; the uploaded copy
-        // is the only one they can open. Failure is not fatal — the local copy
-        // stays, and the record simply carries no URL.
+        // Store the photograph now that the lesion has an id. A device-local
+        // path means nothing to a clinician on another device; the copy held in
+        // the database is the only one they can open. Failure is not fatal — the
+        // local copy stays — but it is reported, so the patient is not left
+        // believing a doctor can see an image that never left the phone.
         final bytes = flow.lesion.photoBytes;
-        final ownerUid = repo.currentUid;
-        if (bytes != null && ownerUid != null && flow.photographAllowed) {
-          final url = await photos.upload(
-            ownerUid: ownerUid,
+        if (bytes != null && flow.photographAllowed) {
+          final stored = await photos.save(
             assessmentId: id,
             lesionId: lesionId,
             bytes: bytes,
           );
-          if (url != null) {
-            await repo.setLesionPhotoUrl(
+          if (stored) {
+            await repo.markLesionPhotoStored(
               assessmentId: id,
               lesionId: lesionId,
-              url: url,
             );
           }
+          photoStored = stored;
         }
       }
 
@@ -97,6 +101,7 @@ class _ResultScreenState extends State<ResultScreen> {
         _plan = plan;
         _assessmentId = id;
         _shared = false;
+        _photoStored = photoStored;
         _saving = false;
       });
     } catch (e) {
@@ -191,6 +196,20 @@ class _ResultScreenState extends State<ResultScreen> {
               ],
             ),
             const SizedBox(height: 14),
+
+            // Said plainly and before the sharing card, because sharing a record
+            // whose photograph stayed on the phone is a different offer.
+            if (_photoStored == false) ...[
+              const NoticeBanner(
+                title: 'Your photograph stayed on this phone',
+                message:
+                    'It could not be saved to your record, so a doctor will not '
+                    'be able to open it. Show it to them from this phone, or try '
+                    'again on a better connection.',
+                severity: NoticeSeverity.caution,
+              ),
+              const SizedBox(height: 14),
+            ],
 
             ShareWithDoctorCard(
               assessmentId: _assessmentId,

@@ -195,6 +195,29 @@ service cloud.firestore {
           && parent().owner_uid == request.auth.uid;
       }
 
+      // Lesion photographs, held as bytes in their own documents.
+      //
+      // WHY HERE AND NOT CLOUD STORAGE: Storage requires the paid plan, and its
+      // rules cannot read a Firestore document, so they could not check consent
+      // or which clinician the record was addressed to. Keeping the image in
+      // Firestore puts it under exactly the same gate as the rest of the record.
+      //
+      // Access matches /lesions deliberately: a photograph is not less sensitive
+      // than the lesion description it belongs to, and the app re-checks live
+      // photograph consent on top of this.
+      match /lesion_photos/{photoId} {
+        function parent() {
+          return get(/databases/$(database)/documents/assessments/$(assessmentId)).data;
+        }
+        allow read: if (isSignedIn() && parent().owner_uid == request.auth.uid)
+          || (isDoctor()
+              && parent().shared_with_doctor == 1
+              && parent().shared_with_uid == request.auth.uid)
+          || (isCoordinator() && parent().shared_with_doctor == 1);
+        allow create, update, delete: if isSignedIn()
+          && parent().owner_uid == request.auth.uid;
+      }
+
       // Clinical assessment and outcome are written by doctors and read by the
       // owning patient (to see referral/follow-up) or any doctor.
       match /clinical/{docId} {

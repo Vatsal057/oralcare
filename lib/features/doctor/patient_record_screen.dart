@@ -3,10 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/local_photo.dart';
+import '../../core/widgets/lesion_photo_view.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/models/patient_case.dart';
-import '../../data/photo_store.dart';
 import '../../data/repositories/clinical_repository.dart';
 import '../../data/repositories/digilocker_repository.dart';
 import '../../domain/records/digilocker_models.dart';
@@ -397,11 +396,13 @@ class _LesionCard extends StatelessWidget {
                 'The patient has not consented to share a photograph, so none '
                 'is shown.',
           )
-        // hasUploadedPhoto must come first: PhotoStore.exists is always false
-        // off-device, so relying on it alone hid uploaded photographs from any
+        // The remote forms must be checked first: PhotoStore.exists is always
+        // false off-device, so relying on it alone hid photographs from any
         // clinician who was not on the capturing phone.
-        else if (lesion.hasUploadedPhoto ||
-            PhotoStore.exists(lesion.photoPath)) ...[
+        else if (LesionPhotoView.isViewable(
+          lesion: lesion,
+          assessmentId: lesion.assessmentId,
+        )) ...[
           Text(
             'Patient photograph',
             style: theme.textTheme.titleSmall?.copyWith(
@@ -409,36 +410,12 @@ class _LesionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // The uploaded copy is the only one visible from another device, so it
-          // is preferred whenever it exists.
-          if (lesion.hasUploadedPhoto)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                lesion.photoUrl!,
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox(
-                  height: 220,
-                  child: Center(
-                    child: Text('Could not load the uploaded photograph'),
-                  ),
-                ),
-                loadingBuilder: (context, child, progress) => progress == null
-                    ? child
-                    : const SizedBox(
-                        height: 220,
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-              ),
-            )
-          else
-            LocalPhoto(
-              path: lesion.photoPath!,
-              height: 220,
-              onTap: () => _openFullScreen(context, lesion.photoPath!),
-            ),
+          LesionPhotoView(
+            assessmentId: lesion.assessmentId,
+            lesion: lesion,
+            height: 220,
+            allowFullScreen: true,
+          ),
           const SizedBox(height: 8),
           const NoticeBanner(
             message:
@@ -452,11 +429,6 @@ class _LesionCard extends StatelessWidget {
     );
   }
 
-  void _openFullScreen(BuildContext context, String path) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => LocalPhotoFullscreen(path: path)));
-  }
 }
 
 class _ClinicianSummaryCard extends StatelessWidget {

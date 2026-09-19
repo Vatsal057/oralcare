@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/widgets/common.dart';
 import '../../core/widgets/local_photo.dart';
+import '../../data/photo_document_store.dart';
 import '../../data/photo_store.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
@@ -62,20 +63,41 @@ class _LesionScreenState extends State<LesionScreen> {
     setState(() => _pickingPhoto = true);
     try {
       final picker = ImagePicker();
+      // Downscaled hard at capture. The photograph is stored inside a Firestore
+      // document, and Firestore caps a document at 1 MiB, so an image that is
+      // too big is an image no clinician ever sees. 1024px at quality 55 lands
+      // well inside the limit on the phone cameras this pilot runs on.
+      //
+      // The same file is kept locally rather than keeping a sharper second copy:
+      // one image means the clinician sees exactly what the patient sees.
       final picked = await picker.pickImage(
         source: source,
-        maxWidth: 2000,
-        imageQuality: 88,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 55,
       );
       if (picked == null) return;
 
       final stored = await PhotoStore.store(picked.path, flow.patientId);
       await PhotoStore.delete(flow.lesion.photoPath);
       flow.lesion.photoPath = stored;
-      // Held for upload once the lesion has an id, so a clinician on another
-      // device can see it. Read now, because the picked file is temporary.
-      flow.lesion.photoBytes = await picked.readAsBytes();
+      // Held until the lesion has an id to store it against, so a clinician on
+      // another device can see it. Read now, because the picked file is
+      // temporary.
+      final bytes = await picked.readAsBytes();
+      flow.lesion.photoBytes = bytes;
       flow.touchLesion();
+
+      // Told now, while the patient can still retake it, instead of only at the
+      // end of the assessment.
+      if (!PhotoDocumentStore.isWithinLimit(bytes.length) && mounted) {
+        showSnack(
+          context,
+          'This photograph is too large to send to a doctor. Try taking it '
+          'again, a little further back.',
+          isError: true,
+        );
+      }
     } catch (e) {
       if (mounted) {
         showSnack(context, 'Could not add the photograph. $e', isError: true);

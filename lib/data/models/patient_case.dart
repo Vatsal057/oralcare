@@ -29,8 +29,19 @@ class PatientCase {
   /// Consent is re-checked here rather than trusted from the record alone.
   bool get photoViewingAllowed => patient.consent.photograph;
 
+  /// Every route to the photograph is cut when consent is absent, not just the
+  /// device-local path: a lesion can also carry a copy in the database and a
+  /// legacy Storage URL, and clearing one of the three is not consent.
   List<LesionRecord> get viewableLesions => lesions
-      .map((l) => photoViewingAllowed ? l : l.copyWith(photoPath: ''))
+      .map(
+        (l) => photoViewingAllowed
+            ? l
+            : l.copyWith(
+                photoPath: '',
+                photoUrl: '',
+                photoInDatabase: false,
+              ),
+      )
       .toList(growable: false);
 
   bool get isReviewed => clinicianAssessment?.isReviewed ?? false;

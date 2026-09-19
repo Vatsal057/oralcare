@@ -296,6 +296,7 @@ class LesionRecord {
     this.restrictedMovement = false,
     this.photoPath,
     this.photoUrl,
+    this.photoInDatabase = false,
     this.note,
   });
 
@@ -324,20 +325,35 @@ class LesionRecord {
   /// it is not what a clinician reads.
   final String? photoPath;
 
-  /// Download URL of the uploaded copy, when Firebase Storage is available.
+  /// Download URL of a copy in Firebase Storage.
   ///
-  /// This is the only form a clinician on another device can open, which is why
-  /// it is stored separately from [photoPath] rather than replacing it.
+  /// LEGACY: the pilot no longer uploads to Storage, which requires the paid
+  /// Blaze plan. Records created while it was in use still carry a URL, so the
+  /// field is still read — it is simply never written any more.
   final String? photoUrl;
+
+  /// True when the photograph is held in Firestore, as bytes, under
+  /// `assessments/{id}/lesion_photos/{lesionId}`.
+  ///
+  /// This is the current cross-device mechanism. The bytes live in their own
+  /// document so that listing a doctor's queue does not drag images along, which
+  /// is why the lesion row carries only this flag and not the image.
+  final bool photoInDatabase;
 
   final String? note;
 
   /// True when a photo exists in any form.
-  bool get hasPhoto => hasLocalPhoto || hasUploadedPhoto;
+  bool get hasPhoto => hasLocalPhoto || hasRemotePhoto;
 
   bool get hasLocalPhoto => photoPath != null && photoPath!.isNotEmpty;
 
   bool get hasUploadedPhoto => photoUrl != null && photoUrl!.isNotEmpty;
+
+  bool get hasDatabasePhoto => photoInDatabase;
+
+  /// True when a clinician on another device can actually open the photograph.
+  /// Anything else is device-local and invisible to them.
+  bool get hasRemotePhoto => hasDatabasePhoto || hasUploadedPhoto;
 
   /// Symptom labels reported as present, for compact display to the doctor.
   List<String> get reportedSymptoms => [
@@ -365,6 +381,7 @@ class LesionRecord {
     bool? restrictedMovement,
     String? photoPath,
     String? photoUrl,
+    bool? photoInDatabase,
     String? note,
   }) => LesionRecord(
     id: id ?? this.id,
@@ -383,6 +400,7 @@ class LesionRecord {
     restrictedMovement: restrictedMovement ?? this.restrictedMovement,
     photoPath: photoPath ?? this.photoPath,
     photoUrl: photoUrl ?? this.photoUrl,
+    photoInDatabase: photoInDatabase ?? this.photoInDatabase,
     note: note ?? this.note,
   );
 
@@ -403,6 +421,7 @@ class LesionRecord {
     'restricted_movement': restrictedMovement ? 1 : 0,
     'photo_path': photoPath,
     'photo_url': photoUrl,
+    'photo_in_database': photoInDatabase ? 1 : 0,
     'note': note,
   };
 
@@ -426,6 +445,8 @@ class LesionRecord {
     restrictedMovement: (row['restricted_movement'] as int? ?? 0) == 1,
     photoPath: row['photo_path'] as String?,
     photoUrl: row['photo_url'] as String?,
+    // Absent on records written before Firestore-held photographs existed.
+    photoInDatabase: (row['photo_in_database'] as int? ?? 0) == 1,
     note: row['note'] as String?,
   );
 }

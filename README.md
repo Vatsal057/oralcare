@@ -160,8 +160,9 @@ information site if it is needed for a different Hosting target.
 6. Provision a second clinician and re-address the record to them. It should
    appear in the second queue and disappear from the first.
 
-Photographs currently remain on the capturing device. They are intentionally not
-synced because Firebase Storage is not configured in this pilot.
+7. Attach a photograph on Phone A with photograph consent granted. It should open
+   on Phone B in the doctor's view of that record. Withdraw photograph consent and
+   it should disappear there.
 
 ## Firebase and security
 
@@ -281,14 +282,23 @@ findings, is not offered to patients as a recipient, and still cannot see a
 record the patient never shared. The validation screen states which scope it is
 showing.
 
-**Photographs across devices.** Implemented but **requires one console step**:
-open [Storage](https://console.firebase.google.com/project/oral-cancer-pilot-1027-dc3a3/storage)
-and click *Get Started*, then run `firebase deploy --only storage`. Until then
-the app keeps photographs on the capturing device and tells the patient a
-clinician cannot see them. Reading an uploaded photograph requires a clinician
-provisioned with `grant_doctor.mjs`: Storage rules cannot read Firestore, so they
-cannot check consent, and the weaker enrolment-code role is not trusted with
-images.
+**Photographs across devices.** A consented lesion photograph is stored in
+Firestore as bytes, at `assessments/{id}/lesion_photos/{lesionId}`, and is read
+by the reviewing clinician from there. No console step and no paid plan is
+needed.
+
+Cloud Storage is deliberately not used. It requires the Blaze plan, and its rules
+cannot read a Firestore document, so they could not check photograph consent or
+which clinician a record was addressed to. Holding the image in Firestore puts it
+under exactly the same consent-and-recipient rules as the rest of the record, and
+withdrawing photograph consent removes every route to it.
+
+The cost is a size limit: a Firestore document is capped at 1 MiB. Photographs
+are captured at 1024px and quality 55, which lands well inside it. An image that
+still does not fit is refused rather than half-saved, and the patient is told —
+at capture, and again on the result screen — that it stayed on the phone and a
+doctor will not be able to open it. Records that predate this carry a Storage URL
+instead; those are still displayed.
 
 **Turning off clinician self-registration.** Build with
 `--dart-define=ALLOW_ENROLMENT_CODE=false` to remove the enrolment-code path
@@ -311,8 +321,9 @@ Read these before demonstrating the app:
   device. The browser cannot schedule them.
 - **Translation is partial.** Clinical questions and the education module carry
   Kannada; the surrounding interface is still English.
-- **Photographs need Firebase Storage enabled** (one console click, see above).
-  Until then they stay on the capturing device.
+- **Photographs are capped at roughly 900 KB** because they are held inside a
+  Firestore document. They are downscaled to 1024px at capture to fit; one that
+  still does not fit is refused, and the patient is told it stayed on the phone.
 - **Family history and immunosuppression are recorded but unscored.** The
   CareConnect specification lists them without weights, and a test enforces that
   they do not move a patient's score until the clinical team agrees one.
