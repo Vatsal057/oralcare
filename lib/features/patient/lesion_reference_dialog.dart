@@ -31,7 +31,7 @@ class LesionReferenceDialog extends StatelessWidget {
     _LesionExample(
       title: 'Homogeneous Leukoplakia (White Patch)',
       subtitle: 'Flat, uniform white plaque that cannot be scraped off',
-      imagePath: 'assets/images/A.png',
+      imagePath: AppImages.signLeukoplakia,
       keyCharacteristics: [
         'Well-demarcated white patch on inner cheek or gums',
         'Cannot be rubbed or scraped off with gauze',
@@ -45,7 +45,7 @@ class LesionReferenceDialog extends StatelessWidget {
     _LesionExample(
       title: 'Erythroleukoplakia (Mixed Red & White Patch)',
       subtitle: 'Speckled red velvety areas interspersed with white plaques',
-      imagePath: 'assets/images/B.png',
+      imagePath: AppImages.signErythroleukoplakia,
       keyCharacteristics: [
         'Mixed velvety red and irregular white patches',
         'Often located on lateral borders of tongue or floor of mouth',
@@ -59,7 +59,7 @@ class LesionReferenceDialog extends StatelessWidget {
     _LesionExample(
       title: 'Verrucous Leukoplakia (Thickened White Lesion)',
       subtitle: 'Thickened, corrugated or wart-like white surface',
-      imagePath: 'assets/images/C.png',
+      imagePath: AppImages.signVerrucous,
       keyCharacteristics: [
         'Rough, corrugated, or papillary white surface',
         'Slow progressive extension across mucosal sites',
@@ -72,7 +72,7 @@ class LesionReferenceDialog extends StatelessWidget {
     _LesionExample(
       title: 'Chronic Non-Healing Oral Ulcer',
       subtitle: 'Sore persisting for longer than two weeks',
-      imagePath: 'assets/images/D.png',
+      imagePath: AppImages.signUlcer,
       keyCharacteristics: [
         'Ulcer persisting >2 weeks without healing',
         'Raised, rolled, or indurated (firm) borders',
@@ -86,7 +86,7 @@ class LesionReferenceDialog extends StatelessWidget {
     _LesionExample(
       title: 'Exophytic Lump / Oral Carcinoma',
       subtitle: 'Abnormal firm thickening or outward tissue growth',
-      imagePath: 'assets/images/E.png',
+      imagePath: AppImages.signExophytic,
       keyCharacteristics: [
         'Firm nodular swelling or proliferative growth',
         'May have surface ulceration, bleeding, or induration',
@@ -100,7 +100,7 @@ class LesionReferenceDialog extends StatelessWidget {
       title: 'Oral Submucous Fibrosis (OSMF)',
       subtitle:
           'Paleness, stiffness, and fibrous bands restricting mouth opening',
-      imagePath: 'assets/images/F.png',
+      imagePath: AppImages.signOsmf,
       keyCharacteristics: [
         'Blanched, pale, marble-like inner cheek mucosa',
         'Palpable vertical fibrous bands inside cheeks',
@@ -276,6 +276,12 @@ class LesionReferenceDialog extends StatelessWidget {
   }
 }
 
+/// Fixed greens for the healthy-baseline card. Not taken from the colour scheme
+/// because "this is normal" must read as reassuring in both light and dark mode,
+/// and the scheme has no semantic success colour.
+const Color _baselineGreen = Color(0xFF2E7D32);
+const Color _baselineGreenText = Color(0xFF1B5E20);
+
 class _LesionExample {
   const _LesionExample({
     required this.title,
@@ -416,28 +422,40 @@ class _ExampleCard extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(height: 10),
+                // The baseline card is reassurance, not a finding. Rendering the
+                // healthy mouth in the same red warning treatment as the
+                // pathology cards made normal tissue look abnormal, which is the
+                // opposite of what a baseline is for.
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withValues(
-                      alpha: 0.4,
-                    ),
+                    color: example.isBaseline
+                        ? _baselineGreen.withValues(alpha: 0.13)
+                        : theme.colorScheme.errorContainer.withValues(
+                            alpha: 0.4,
+                          ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
-                        Icons.warning_amber_rounded,
+                        example.isBaseline
+                            ? Icons.check_circle_outline
+                            : Icons.warning_amber_rounded,
                         size: 18,
-                        color: theme.colorScheme.error,
+                        color: example.isBaseline
+                            ? _baselineGreen
+                            : theme.colorScheme.error,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           example.clinicalSignificance,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onErrorContainer,
+                            color: example.isBaseline
+                                ? _baselineGreenText
+                                : theme.colorScheme.onErrorContainer,
                             fontWeight: FontWeight.w500,
                             height: 1.35,
                           ),

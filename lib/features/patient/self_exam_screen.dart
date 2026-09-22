@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/i18n/clinical_terms.dart';
+import '../../core/app_images.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/fullscreen_image.dart';
 import '../../domain/risk_catalog.dart';
@@ -344,16 +345,20 @@ class _SiteIllustration extends StatelessWidget {
 ///
 /// Returning null rather than a default matters: the previous fallback showed
 /// the lips illustration for any unrecognised site, so a new site would quietly
-/// display the wrong anatomy. `8.png` is referenced ahead of time so the throat
-/// illustration appears as soon as the asset is added.
+/// display the wrong anatomy.
+///
+/// Paths come from [AppImages] rather than string literals. Literals here were
+/// the reason every illustration broke once the set was converted to JPEG: they
+/// still said `.png`, and the deployed site answers a missing asset with
+/// index.html, so the app received HTML where it expected an image.
 String? _imageForSite(String key) => switch (key) {
-  'lips' => 'assets/images/1.png',
-  'inner_cheeks' => 'assets/images/2.png',
-  'gums' => 'assets/images/3.png',
-  'tongue' => 'assets/images/4.png',
-  'floor_of_mouth' => 'assets/images/5.png',
-  'palate' => 'assets/images/6.png',
-  'neck' => 'assets/images/7.png',
-  'throat' => 'assets/images/8.png',
+  'lips' => AppImages.siteLips,
+  'inner_cheeks' => AppImages.siteInnerCheeks,
+  'gums' => AppImages.siteGums,
+  'tongue' => AppImages.siteTongue,
+  'floor_of_mouth' => AppImages.siteFloorOfMouth,
+  'palate' => AppImages.sitePalate,
+  'neck' => AppImages.siteNeck,
+  'throat' => AppImages.siteThroat,
   _ => null,
 };

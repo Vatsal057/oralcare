@@ -15,6 +15,8 @@ import 'package:oralcare/domain/risk_catalog.dart';
 /// every declared path must be spelled consistently, and the report at the end
 /// prints which files are still outstanding.
 void main() {
+  _sourceHygiene();
+
   group('asset paths are well formed', () {
     test('every declared image lives under assets/images', () {
       for (final path in AppImages.all) {
@@ -139,5 +141,77 @@ void main() {
             'illustration: $site',
       );
     }
+  });
+}
+
+/// Every illustration broke at once because six gallery entries and the eight
+/// self-examination sites held raw `'assets/images/X.png'` literals instead of
+/// [AppImages] constants. Converting the set to JPEG updated the constants and
+/// left the literals behind, and nothing failed at build time: Flutter resolves
+/// an asset path at runtime, and the deployed site answers a missing file with
+/// index.html, so the app received HTML where it expected an image and simply
+/// drew a broken-image icon.
+///
+/// These tests read the source. That is unusual, but the bug lives in the
+/// difference between what the inventory declares and what the widgets actually
+/// ask for, which no amount of runtime assertion can see.
+void _sourceHygiene() {
+  const sourceDirs = ['lib'];
+
+  List<File> dartFiles() => [
+    for (final dir in sourceDirs)
+      ...Directory(dir)
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart')),
+  ];
+
+  group('asset paths are never written as literals', () {
+    test('no widget hard-codes an assets/images path', () {
+      final offenders = <String>[];
+
+      for (final file in dartFiles()) {
+        // The inventory is the one place allowed to spell paths out.
+        if (file.path.endsWith('core/app_images.dart')) continue;
+
+        final lines = file.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].contains("'assets/images/") ||
+              lines[i].contains('"assets/images/')) {
+            offenders.add('${file.path}:${i + 1}');
+          }
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'Use an AppImages constant instead. A literal path silently stops '
+            'matching when the inventory changes, and a wrong asset path fails '
+            'only at runtime:\n${offenders.join('\n')}',
+      );
+    });
+
+    test('no source file still refers to a .png asset', () {
+      final offenders = <String>[];
+
+      for (final file in dartFiles()) {
+        final lines = file.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].contains('assets/images') && lines[i].contains('.png')) {
+            offenders.add('${file.path}:${i + 1}');
+          }
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'The illustration set is JPEG. A leftover .png path resolves to '
+            'nothing:\n${offenders.join('\n')}',
+      );
+    });
   });
 }
