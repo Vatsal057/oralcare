@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import '../../core/clinical_notices.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/risk_flag_scale.dart';
 import '../../data/photo_document_store.dart';
 import '../../data/repositories/assessment_repository.dart';
 import '../../domain/follow_up_policy.dart';
 import '../../domain/risk_catalog.dart';
 import '../../domain/risk_engine.dart';
 import '../../state/assessment_flow.dart';
+import 'next_steps_card.dart';
 import 'share_with_doctor_card.dart';
 
 /// Patient output (spec section 2.6, Table 7).
@@ -194,6 +196,12 @@ class _ResultScreenState extends State<ResultScreen> {
                   ),
                 ],
               ],
+            ),
+            const SizedBox(height: 14),
+
+            NextStepsCard(
+              outputState: result.outputState,
+              followUpDue: plan.due,
             ),
             const SizedBox(height: 14),
 
@@ -429,25 +437,40 @@ class _ScoreCard extends StatelessWidget {
     final theme = Theme.of(context);
     final visuals = RiskVisuals.forCategory(result.category, theme.brightness);
 
+    final flag = RiskFlag.forState(result.outputState);
+
     return SectionCard(
       title: 'Your provisional score',
       icon: Icons.calculate_outlined,
       subtitle: 'Cut-offs: 0–4 lower, 5–9 increased, 10 or more higher.',
       trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
         decoration: BoxDecoration(
           color: visuals.color,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(
-          '${result.totalScore}',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: visuals.onColor,
-            fontWeight: FontWeight.w800,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.flag, size: 17, color: flag.color),
+            const SizedBox(width: 5),
+            Text(
+              '${result.totalScore}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: visuals.onColor,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
       ),
       children: [
+        RiskFlagScale(
+          category: result.category,
+          outputState: result.outputState,
+          overrideApplied: result.professionalCheckRequired,
+        ),
+        const SizedBox(height: 14),
         DetailRow(label: 'Total score', value: '${result.totalScore}'),
         DetailRow(
           label: 'Score band',

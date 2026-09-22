@@ -22,7 +22,8 @@ class LocalPhoto extends StatelessWidget {
         File(path),
         height: height,
         width: double.infinity,
-        fit: BoxFit.cover,
+        // contain: cropping a lesion photograph can remove the lesion.
+        fit: BoxFit.contain,
         errorBuilder: (_, _, _) => SizedBox(
           height: height,
           child: const Center(child: Text('Could not display image')),

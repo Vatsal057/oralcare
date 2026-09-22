@@ -132,6 +132,8 @@ class RiskCatalog {
   static const int lowerRiskMaxScore = 4;
   static const int increasedRiskMaxScore = 9;
 
+
+
   /// Spec section 2.3 / Table 4 — a red flag lasting this long or longer
   /// triggers the professional-check override.
   static const int persistenceThresholdDays = 14;

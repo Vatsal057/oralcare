@@ -11,6 +11,18 @@ extension RiskCategoryX on RiskCategory {
     RiskCategory.higher => 'higher',
   };
 
+  /// The band's score range, as shown to the patient.
+  ///
+  /// Derived from the cut-off constants rather than written out, so moving a
+  /// threshold cannot leave the displayed range contradicting the engine.
+  String get rangeLabel => switch (this) {
+    RiskCategory.lower => '0 to ${RiskCatalog.lowerRiskMaxScore}',
+    RiskCategory.increased =>
+      '${RiskCatalog.lowerRiskMaxScore + 1} to '
+          '${RiskCatalog.increasedRiskMaxScore}',
+    RiskCategory.higher => '${RiskCatalog.increasedRiskMaxScore + 1} or more',
+  };
+
   String get label => switch (this) {
     RiskCategory.lower => 'Lower risk',
     RiskCategory.increased => 'Increased risk',

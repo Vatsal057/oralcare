@@ -195,7 +195,7 @@ class _ExampleCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 240,
+            height: 260,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -203,7 +203,10 @@ class _ExampleCard extends StatelessWidget {
                   maxScale: 4.0,
                   child: Image.asset(
                     example.imagePath,
-                    fit: BoxFit.cover,
+                    // contain, not cover: a reference photograph exists to be
+                    // compared against, and cover cropped away the margins of
+                    // the lesion that define its appearance.
+                    fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) => Center(
                       child: Icon(
                         Icons.image_not_supported_outlined,

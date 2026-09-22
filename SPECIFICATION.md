@@ -4,7 +4,7 @@
 **Platforms:** Android (full), Web (full except camera capture)
 **Live web build:** https://oralcare.web.app (the original `oral-cancer-pilot-1027-dc3a3.web.app` also stays current — both sites receive every deploy)
 **Backend:** Firebase Authentication + Cloud Firestore (free Spark plan; no Cloud Storage, no Cloud Functions)
-**Verification at time of writing:** `flutter analyze` clean · 156 tests pass · web and debug APK build
+**Verification at time of writing:** `flutter analyze` clean · 174 tests pass · web and debug APK build
 
 ---
 
@@ -268,6 +268,15 @@ Per site: two switches — *"I examined this site"* and, once examined, *"I foun
 
 **Asset gap: `assets/images/8.png` (throat) does not exist.** The site renders a labelled placeholder — *"No illustration for Back of the throat yet. Follow the written instruction below."* It never substitutes another site's image, because showing the wrong anatomy is worse than showing none.
 
+**Illustration cropping — fixed at clinical review.** The illustrations were being cut off, reported twice by the reviewing clinician. Two independent causes:
+
+1. `BoxFit.cover` on a fixed 200 px-tall box. Cover scales an image to *fill* its box and discards the overflow. The assets range from 1.09:1 to 1.50:1, so **17% to 39% of every illustration was being cropped away**, worst on the neck image at 61% visible. Nothing on screen indicated anything was missing.
+2. A dark gradient band carrying the site name was layered over the bottom of the image, hiding the lower part of the anatomy on every card.
+
+Both fixed: `BoxFit.contain` inside a 280 px cap, the site name moved below the illustration, and tap-to-enlarge added with a visible "Tap to enlarge" affordance. Letterboxing an image that is whole beats a flush one that is cut.
+
+The same `BoxFit.cover` bug affected the clinical reference gallery and, more seriously, **lesion photographs in both the patient's and the clinician's views** — where the cropped-away region is the lesion margin and surrounding mucosa a reviewer is specifically looking at. All are now `contain`. There is no remaining `BoxFit.cover` in `lib/`.
+
 ### 4.7 Step 3 — Lesion recording (IPO Table 6 / CareConnect module E)
 
 | Field | Control | Required | Notes |
@@ -322,7 +331,32 @@ Every clinician-facing check uses `hasRemotePhoto`. The queue's "Photograph" pil
 
 This screen is also the commit point: the engine runs once, then RISK_ASSESSMENT, SELF_EXAMINATION, LESION and the photograph are written. **Nothing is shared on save** — sharing is addressed to a named clinician and only happens when the patient picks one.
 
-Displayed, in order: headline and score band · urgency banner when applicable · "What this means" · state-specific advice bullets · "Why you got this result" (engine reasons plus the findings reported) · provisional score card with per-answer contributions and any unknown answers · follow-up plan and next-check date · photograph-failure notice if applicable · send-to-doctor card · fixed no-diagnosis and provisional-scores notices.
+Displayed, in order: headline and score band · urgency banner when applicable · "What this means" · state-specific advice bullets · "Why you got this result" (engine reasons plus the findings reported) · provisional score card with the **flag scale** (§4.9.1), per-answer contributions and any unknown answers · follow-up plan and next-check date · **Next steps** card (§4.9.2) · photograph-failure notice if applicable · send-to-doctor card · fixed no-diagnosis and provisional-scores notices.
+
+#### 4.9.1 Flag scale — green / yellow / red
+
+Added at clinical review. The provisional score card shows all three bands as flags, not only the one reached, so the patient has a frame of reference for the number:
+
+| Flag | Band | Score | Action shown |
+|---|---|---|---|
+| 🟢 Green | Lower risk | 0 to 4 | Keep up prevention and check again monthly. |
+| 🟡 Yellow | Increased risk | 5 to 9 | Change habits and arrange a professional check. |
+| 🔴 Red | Higher risk | 10 or more | See a dentist or doctor. |
+
+The band reached is marked with a filled flag, a tinted row and a `YOU` marker; the others are outlined. **The shape difference, not just the colour, carries the "you are here" signal**, and every row states the band name and score range in text — colour alone is unreadable to a colour-blind patient and invisible to a screen reader.
+
+Score ranges are derived from the cut-off constants (`RiskCategory.rangeLabel`), so moving a threshold cannot leave the displayed range contradicting the engine.
+
+**The override is shown here too.** A persistent red flag or a previous OSCC produces a red flag on a score of 2, and a card that displayed only the green band would contradict the instruction the same screen is giving. When an override fired, a red-flag panel states that it outranks the score band and why. A test pins this case specifically: band green, output red.
+
+#### 4.9.2 Next steps — referral and follow-up reminders
+
+Added at clinical review, because both destinations already existed but were unreachable from the moment they are needed: the centres directory sat two taps into the Care & Rehab tab, and reminders behind a home-screen app-bar icon. Being told "arrange a professional oral examination" and then having to go hunting for the centre list is how a referral quietly fails.
+
+The card sits on the result and on every past assessment, offering:
+
+- **Find a screening centre** → the centres directory and referral-slip generator. Promoted to the primary action, and tinted with the flag colour, when the flag is red.
+- **Set a follow-up reminder** → the reminders screen. The wording names the actual date — *"Be reminded two days before 29 Sep"* — rather than describing the feature, and falls back to the monthly self-check when there is no follow-up due.
 
 ### 4.10 Sharing (IPO §2, "With consent, send record to doctor")
 
@@ -564,7 +598,20 @@ Per record: category (required), title (required), doctor/hospital, date of repo
 
 Module G's *"Users should control which records are shared and with whom"* is implemented literally: each document carries its own `is_shared` flag, and the clinician's record screen reads only shared documents. The query filter is mandatory, not an optimisation — the rules permit a clinician to read only shared documents, and Firestore rejects a query it cannot prove stays inside that permission.
 
-**Built, limited:** the attachment is stored as a device-local path only. A shared document's *metadata* is visible to the clinician; the image file itself is not uploaded. Uploading arbitrary documents would need the same Firestore-bytes treatment as lesion photographs, with the same 1 MiB ceiling — not attempted for multi-page PDF reports.
+**Attached pictures are stored server-side.** The image is held as bytes at `users/{uid}/digilocker_files/{recordId}` — the same mechanism as lesion photographs (§4.8), sharing one implementation and one size limit via `ImageDocumentStore`.
+
+This was a defect until clinical review. The locker previously kept only `local_file_path`, a path on the capturing device, which meant a filed biopsy report or clinical photograph disappeared on any other device, was lost with the phone — precisely what a records locker exists to prevent — and showed the reviewing clinician nothing even when the patient had marked it shared.
+
+Design notes:
+
+- The bytes live in a sibling document, not on the record, so listing the locker does not download every image.
+- The file document id **is** the record id. That makes the pairing unambiguous and lets the rules locate the parent record.
+- The file document deliberately carries **no sharing flag of its own**. The patient makes one `is_shared` decision, on the record, and the rules read that record to authorise the image — so the two cannot drift apart.
+- Capture is downscaled to 1400 px at quality 60 and refused above ~900 KiB, with the reason given.
+- The image is written **before** the record, so `has_image` on the record is a statement of fact rather than a hope. If the image fails, the record still saves and the patient is told it will not be visible on another device.
+- Records filed before this existed show an explanatory note rather than an empty space, so nobody assumes an old picture is safe in the locker.
+
+**Still not built:** multi-page PDF reports. The 1 MiB per-document ceiling makes them impractical without Cloud Storage.
 
 ### 8.4 Cessation (screen 17) — CareConnect module H
 
@@ -716,7 +763,8 @@ Self-examination is stored inline rather than as a subcollection because it is s
 | Path | Contents |
 |---|---|
 | `users/{uid}` | Profile, role, consent flags |
-| `users/{uid}/digilocker_records/{id}` | Patient documents, with `is_shared` |
+| `users/{uid}/digilocker_records/{id}` | Patient documents, with `is_shared` and `has_image` |
+| `users/{uid}/digilocker_files/{id}` | Attached picture bytes. Id matches the record id |
 | `users/{uid}/cessation/plan` | Quit plan and craving log |
 | `users/{uid}/appointments/{id}` | Patient-authored visit intentions |
 | `patient_ids/{patientId}` | Uniqueness reservation. Doc id *is* the Patient ID |
@@ -763,6 +811,7 @@ The full engine output is persisted, not recomputed on read. A historical record
 |---|---|---|
 | `users/{uid}` | Self, or any doctor | Self only. Delete denied |
 | `users/{uid}/digilocker_records/{id}` | Self, or doctor when `is_shared == 1` | Self only |
+| `users/{uid}/digilocker_files/{id}` | Self, or doctor when the **parent record** has `is_shared == 1` | Self only |
 | `users/{uid}/cessation`, `.../appointments` | Self only | Self only |
 | `doctors/{uid}` | Any signed-in user | That clinician only. Delete denied |
 | `screening_centers/{id}` | Any signed-in user | Denied — Admin SDK only |
@@ -1015,7 +1064,8 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 | Enrolment code + `hasDoctorProfile()` rules fallback allow self-assigned clinician role | **High** — must be removed before real deployment |
 | `outcome` rules block has no coordinator read branch while `clinical` does | Medium — review whether intentional |
 | Emergency and centre "Call" buttons display a number rather than dialling | Low — but the label implies dialling |
-| DigiLocker attachments are device-local paths; a shared document's file is not visible to the clinician | Medium |
+| ~~DigiLocker attachments are device-local paths~~ | **Fixed** — see §8.3 |
+| ~~Illustrations and photographs cropped by `BoxFit.cover`~~ | **Fixed** — see §4.6 |
 | Rehabilitation screen state is not persisted | Low |
 
 ### 15.5 Not built, with reasons
@@ -1037,7 +1087,7 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 
 ## 16. Test coverage
 
-156 tests across 12 files. All pass.
+174 tests across 13 files. All pass.
 
 | File | Covers |
 |---|---|
@@ -1050,6 +1100,7 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 | `reminder_service_test.dart` | Platform gating, id allocation |
 | `lesion_photo_test.dart` | The three photograph states, legacy-row compatibility, the 1 MiB limit, and that withdrawing consent cuts every route to the image |
 | `consent_wording_test.dart` | Consent-form accuracy: the stale device-only claims cannot reappear, and the account/encryption/audit-gap/coordinator/withdrawal disclosures must stay stated |
+| `review_feedback_test.dart` | The clinical-review changes: flag-to-band mapping, that an override shows red over a green band, band ranges derived from the cut-offs, and that a DigiLocker local path is not a viewable image |
 | `enrolment_switch_test.dart` | Behaviour under both `ALLOW_ENROLMENT_CODE` builds |
 | `new_features_test.dart` | CareConnect module models |
 | `app_smoke_test.dart` | App boots, role selection renders |
@@ -1120,8 +1171,8 @@ Build switches:
 | Rehabilitation modalities | 3 (7 exercises, 13 special instructions) |
 | Emergency conditions | 6 |
 | Reminder types | 8 |
-| Firestore collections / subcollections | 12 |
-| Tests | 156 |
+| Firestore collections / subcollections | 13 |
+| Tests | 174 |
 
 ## Appendix B — Key constants
 

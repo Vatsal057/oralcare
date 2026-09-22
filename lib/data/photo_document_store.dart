@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'firestore_refs.dart';
+import 'image_document_store.dart';
 
 /// Stores a consented lesion photograph inside Firestore, as bytes.
 ///
@@ -24,7 +25,10 @@ class PhotoDocumentStore {
 
   /// Firestore's hard limit is 1,048,576 bytes for the whole document. The
   /// ceiling leaves room for the other fields and Firestore's own overhead.
-  static const int maxBytes = 900 * 1024;
+  ///
+  /// Delegated to [ImageDocumentStore] so lesion photographs and DigiLocker
+  /// attachments cannot end up with different limits.
+  static int get maxBytes => ImageDocumentStore.maxBytes;
 
   static const String collectionName = 'lesion_photos';
 
@@ -41,7 +45,7 @@ class PhotoDocumentStore {
 
   /// True when an image is small enough to be stored in a document.
   static bool isWithinLimit(int byteCount) =>
-      byteCount > 0 && byteCount <= maxBytes;
+      ImageDocumentStore.isWithinLimit(byteCount);
 
   DocumentReference<Map<String, dynamic>>? _ref({
     required int assessmentId,
@@ -59,24 +63,11 @@ class PhotoDocumentStore {
     required int lesionId,
     required Uint8List bytes,
     String contentType = 'image/jpeg',
-  }) async {
-    if (!isWithinLimit(bytes.length)) return false;
-
-    final ref = _ref(assessmentId: assessmentId, lesionId: lesionId);
-    if (ref == null) return false;
-
-    try {
-      await ref.set({
-        'bytes': Blob(bytes),
-        'content_type': contentType,
-        'byte_count': bytes.length,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
+  }) => ImageDocumentStore.write(
+    ref: _ref(assessmentId: assessmentId, lesionId: lesionId),
+    bytes: bytes,
+    contentType: contentType,
+  );
 
   /// Loads the photograph, or null when there is none or it cannot be read.
   ///
@@ -85,33 +76,13 @@ class PhotoDocumentStore {
   Future<Uint8List?> load({
     required int assessmentId,
     required int lesionId,
-  }) async {
-    final ref = _ref(assessmentId: assessmentId, lesionId: lesionId);
-    if (ref == null) return null;
-
-    try {
-      final snapshot = await ref.get();
-      final data = snapshot.data();
-      if (!snapshot.exists || data == null) return null;
-      final blob = data['bytes'];
-      return blob is Blob ? blob.bytes : null;
-    } catch (_) {
-      return null;
-    }
-  }
+  }) => ImageDocumentStore.read(
+    _ref(assessmentId: assessmentId, lesionId: lesionId),
+  );
 
   /// Removes the stored photograph when the patient withdraws it.
-  Future<bool> delete({
-    required int assessmentId,
-    required int lesionId,
-  }) async {
-    final ref = _ref(assessmentId: assessmentId, lesionId: lesionId);
-    if (ref == null) return false;
-    try {
-      await ref.delete();
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
+  Future<bool> delete({required int assessmentId, required int lesionId}) =>
+      ImageDocumentStore.remove(
+        _ref(assessmentId: assessmentId, lesionId: lesionId),
+      );
 }

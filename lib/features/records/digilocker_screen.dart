@@ -1,8 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/common.dart';
+import '../../core/widgets/stored_document_image.dart';
+import '../../data/digilocker_file_store.dart';
 import '../../data/repositories/digilocker_repository.dart';
 import '../../domain/records/digilocker_models.dart';
 import '../../state/session_controller.dart';
@@ -50,6 +54,7 @@ class _DigiLockerScreenState extends State<DigiLockerScreen> {
     final session = context.read<SessionController>();
     final patientId = session.user?.patientId ?? 'guest';
     final repo = context.read<DigiLockerRepository>();
+    final files = context.read<DigiLockerFileStore>();
 
     await showModalBottomSheet(
       context: context,
@@ -59,12 +64,34 @@ class _DigiLockerScreenState extends State<DigiLockerScreen> {
       ),
       builder: (_) => _AddDocumentSheet(
         patientId: patientId,
-        onSave: (newRecord) async {
-          await repo.saveRecord(newRecord);
-          if (mounted) {
-            showSnack(context, 'Document saved to your Medical Locker.');
-            await _load();
+        onSave: (newRecord, bytes) async {
+          var record = newRecord;
+
+          // Store the image before the record, so the flag on the record is a
+          // statement of fact. Writing the record first and the image second
+          // would leave a document claiming to hold a picture that is not there.
+          var imageFailed = false;
+          if (bytes != null) {
+            final stored = await files.save(
+              recordId: record.id,
+              bytes: bytes,
+            );
+            record = record.copyWith(hasStoredImage: stored);
+            imageFailed = !stored;
           }
+
+          await repo.saveRecord(record);
+          if (!mounted) return;
+
+          showSnack(
+            context,
+            imageFailed
+                ? 'Document saved, but the image could not be stored. It will '
+                      'not be visible on another device.'
+                : 'Document saved to your Medical Locker.',
+            isError: imageFailed,
+          );
+          await _load();
         },
       ),
     );
@@ -364,6 +391,27 @@ class _RecordCard extends StatelessWidget {
                 style: theme.textTheme.bodyMedium?.copyWith(height: 1.35),
               ),
             ],
+
+            if (record.hasViewableImage) ...[
+              const SizedBox(height: 10),
+              StoredDocumentImage(
+                recordId: record.id,
+                title: record.title,
+              ),
+            ] else if (record.localFilePath != null) ...[
+              // A local path with no stored image means this was filed before
+              // attachments were stored server-side. Saying so is better than
+              // showing nothing and letting the patient assume the picture is
+              // safe in the locker.
+              const SizedBox(height: 10),
+              const NoticeBanner(
+                message:
+                    'The picture for this document was only kept on the phone '
+                    'that added it, so it cannot be shown here. Add it again to '
+                    'store it in your locker.',
+              ),
+            ],
+
             const Divider(height: 20),
             Row(
               children: [
@@ -406,7 +454,11 @@ class _AddDocumentSheet extends StatefulWidget {
   const _AddDocumentSheet({required this.patientId, required this.onSave});
 
   final String patientId;
-  final Future<void> Function(DigiLockerRecord) onSave;
+
+  /// Receives the record and, separately, the image bytes. The caller stores the
+  /// image first so the record can be written with an accurate
+  /// `hasStoredImage` flag rather than a hopeful one.
+  final Future<void> Function(DigiLockerRecord, Uint8List?) onSave;
 
   @override
   State<_AddDocumentSheet> createState() => _AddDocumentSheetState();
@@ -421,6 +473,10 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
   DigiLockerCategory _category = DigiLockerCategory.biopsyHistopathology;
   DateTime _documentDate = DateTime.now();
   String? _pickedFilePath;
+
+  /// The image itself. The path alone was what made stored documents vanish on
+  /// any other device, so the bytes are what actually get filed.
+  Uint8List? _pickedBytes;
   bool _shareWithDoctor = false;
   bool _saving = false;
 
@@ -436,11 +492,40 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final file = await _picker.pickImage(source: source);
-      if (file != null && mounted) {
-        setState(() => _pickedFilePath = file.path);
+      // Downscaled at capture for the same reason as a lesion photograph: the
+      // image is stored inside a Firestore document, which is capped at 1 MiB.
+      // A report photographed at full resolution would be refused, and a
+      // document filed without its picture is not filed.
+      final file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1400,
+        maxHeight: 1400,
+        imageQuality: 60,
+      );
+      if (file == null) return;
+
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+
+      if (!DigiLockerFileStore.isWithinLimit(bytes.length)) {
+        showSnack(
+          context,
+          'That image is too large to store. Photograph the page again from a '
+          'little further back.',
+          isError: true,
+        );
+        return;
       }
-    } catch (_) {}
+
+      setState(() {
+        _pickedFilePath = file.path;
+        _pickedBytes = bytes;
+      });
+    } catch (e) {
+      if (mounted) {
+        showSnack(context, 'Could not attach that image. $e', isError: true);
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -464,7 +549,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
       createdAt: DateTime.now(),
     );
 
-    await widget.onSave(record);
+    await widget.onSave(record, _pickedBytes);
     if (mounted) Navigator.pop(context);
   }
 

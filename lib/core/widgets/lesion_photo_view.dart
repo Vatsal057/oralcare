@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/photo_document_store.dart';
 import '../../data/photo_store.dart';
+import 'fullscreen_image.dart';
 import 'local_photo.dart';
 
 /// Shows a lesion photograph, whichever of the three forms it exists in.
@@ -58,7 +59,7 @@ class LesionPhotoView extends StatelessWidget {
           lesion.photoUrl!,
           height: height,
           width: double.infinity,
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
           errorBuilder: (_, _, _) => _Message(
             height: height,
             text: 'Could not load the stored photograph',
@@ -135,37 +136,27 @@ class _DatabasePhotoState extends State<_DatabasePhoto> {
 
       final image = ClipRRect(
         borderRadius: BorderRadius.circular(12),
+        // contain, not cover. A clinician reviewing a lesion is looking at the
+        // margins and the surrounding mucosa; cover crops precisely that away,
+        // and nothing on screen would indicate anything was missing.
         child: Image.memory(
           bytes,
           height: widget.height,
           width: double.infinity,
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
         ),
       );
 
       if (!widget.allowFullScreen) return image;
       return GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => _FullscreenBytes(bytes: bytes)),
+        onTap: () => FullscreenImageView.open(
+          context,
+          image: MemoryImage(bytes),
+          title: 'Patient photograph',
         ),
         child: image,
       );
     },
-  );
-}
-
-class _FullscreenBytes extends StatelessWidget {
-  const _FullscreenBytes({required this.bytes});
-
-  final Uint8List bytes;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Patient photograph')),
-    backgroundColor: Colors.black,
-    body: Center(
-      child: InteractiveViewer(maxScale: 5, child: Image.memory(bytes)),
-    ),
   );
 }
 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/i18n/clinical_terms.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/fullscreen_image.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
 import '../../state/locale_controller.dart';
@@ -137,61 +138,46 @@ class _SiteCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Stack(
-            children: [
-              _SiteIllustration(
-                assetPath: _imageForSite(site.key),
-                label: siteLabel,
-              ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.8),
-                        Colors.transparent,
-                      ],
+          _SiteIllustration(
+            assetPath: _imageForSite(site.key),
+            label: siteLabel,
+          ),
+
+          // The site name sits BELOW the illustration, not layered over it. It
+          // used to be a dark gradient band across the bottom of the image,
+          // which hid the lower part of the anatomy on every card -- the second
+          // half of the "pictures are cut" problem, after BoxFit.cover.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                Icon(
+                  finding.abnormality
+                      ? Icons.error_outline
+                      : finding.examined
+                      ? Icons.check_circle_outline
+                      : Icons.radio_button_unchecked,
+                  size: 24,
+                  color: finding.abnormality
+                      ? theme.colorScheme.error
+                      : finding.examined
+                      ? const Color(0xFF2E7D32)
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    siteLabel,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        finding.abnormality
-                            ? Icons.error_outline
-                            : finding.examined
-                            ? Icons.check_circle_outline
-                            : Icons.radio_button_unchecked,
-                        size: 24,
-                        color: finding.abnormality
-                            ? Colors.redAccent
-                            : finding.examined
-                            ? Colors.greenAccent
-                            : Colors.white70,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          siteLabel,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -321,12 +307,35 @@ class _SiteIllustration extends StatelessWidget {
 
     if (path == null) return placeholder();
 
-    return Image.asset(
-      path,
-      height: 200,
-      width: double.infinity,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => placeholder(),
+    // BoxFit.contain, never cover. These illustrations range from 1.09:1 to
+    // 1.50:1, so filling a fixed 200px-tall box cropped between 17% and 39% of
+    // every one of them -- including the edges of the anatomy the instruction
+    // tells the patient to inspect. A letterboxed image that is whole beats a
+    // flush one that is cut.
+    return GestureDetector(
+      onTap: () => FullscreenImageView.open(
+        context,
+        image: AssetImage(path),
+        title: label,
+      ),
+      child: Container(
+        width: double.infinity,
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: Stack(
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 280),
+              child: Image.asset(
+                path,
+                width: double.infinity,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => placeholder(),
+              ),
+            ),
+            const Positioned(top: 10, right: 10, child: ZoomHint()),
+          ],
+        ),
+      ),
     );
   }
 }

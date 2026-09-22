@@ -5,12 +5,14 @@ import '../../core/clinical_notices.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/lesion_photo_view.dart';
+import '../../core/widgets/risk_flag_scale.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/models/clinical_models.dart';
 import '../../data/repositories/assessment_repository.dart';
 import '../../data/repositories/clinical_repository.dart';
 import '../../domain/risk_catalog.dart';
 import '../../domain/risk_engine.dart';
+import 'next_steps_card.dart';
 import 'share_with_doctor_card.dart';
 
 /// Read-only patient view of one past assessment.
@@ -121,6 +123,22 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
                   const SizedBox(height: 14),
 
                   SectionCard(
+                    title: 'Your provisional score',
+                    icon: Icons.flag_outlined,
+                    subtitle:
+                        'Where this score sat on the scale at the time of the '
+                        'check.',
+                    children: [
+                      RiskFlagScale(
+                        category: result.category,
+                        outputState: result.outputState,
+                        overrideApplied: result.professionalCheckRequired,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  SectionCard(
                     title: 'Guidance given',
                     icon: Icons.help_outline,
                     children: [
@@ -211,6 +229,12 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
                         value: AppFormats.d(record.followUpDue),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  NextStepsCard(
+                    outputState: result.outputState,
+                    followUpDue: record.followUpDue,
                   ),
                   const SizedBox(height: 14),
 

@@ -55,6 +55,7 @@ class DigiLockerRecord {
     required this.documentDate,
     this.notes,
     this.localFilePath,
+    this.hasStoredImage = false,
     this.isSharedWithClinician = false,
     required this.createdAt,
   });
@@ -66,9 +67,22 @@ class DigiLockerRecord {
   final String facilityOrDoctor;
   final DateTime documentDate;
   final String? notes;
+
+  /// A path on the capturing device. Meaningless anywhere else, which is why it
+  /// is not what any viewer reads.
   final String? localFilePath;
+
+  /// True when the image is held in Firestore at
+  /// `users/{uid}/digilocker_files/{id}` and can therefore be opened on another
+  /// device, and by a clinician if the document is shared.
+  final bool hasStoredImage;
+
   final bool isSharedWithClinician;
   final DateTime createdAt;
+
+  /// Whether there is an image a clinician or another device could actually
+  /// open. A local path alone is not one.
+  bool get hasViewableImage => hasStoredImage;
 
   DigiLockerRecord copyWith({
     String? title,
@@ -77,6 +91,7 @@ class DigiLockerRecord {
     DateTime? documentDate,
     String? notes,
     String? localFilePath,
+    bool? hasStoredImage,
     bool? isSharedWithClinician,
   }) => DigiLockerRecord(
     id: id,
@@ -87,6 +102,7 @@ class DigiLockerRecord {
     documentDate: documentDate ?? this.documentDate,
     notes: notes ?? this.notes,
     localFilePath: localFilePath ?? this.localFilePath,
+    hasStoredImage: hasStoredImage ?? this.hasStoredImage,
     isSharedWithClinician: isSharedWithClinician ?? this.isSharedWithClinician,
     createdAt: createdAt,
   );
@@ -100,6 +116,7 @@ class DigiLockerRecord {
     'document_date': documentDate.toIso8601String(),
     'notes': notes,
     'local_file_path': localFilePath,
+    'has_image': hasStoredImage ? 1 : 0,
     'is_shared': isSharedWithClinician ? 1 : 0,
     'created_at': createdAt.toIso8601String(),
   };
@@ -116,6 +133,9 @@ class DigiLockerRecord {
             DateTime.now(),
         notes: json['notes'] as String?,
         localFilePath: json['local_file_path'] as String?,
+        // Absent on records saved before images were stored server-side, which
+        // must not make a viewer fetch a document that was never written.
+        hasStoredImage: (json['has_image'] as int? ?? 0) == 1,
         isSharedWithClinician: (json['is_shared'] as int? ?? 0) == 1,
         createdAt:
             DateTime.tryParse(json['created_at'] as String? ?? '') ??

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/lesion_photo_view.dart';
+import '../../core/widgets/stored_document_image.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/models/patient_case.dart';
 import '../../data/repositories/clinical_repository.dart';
@@ -287,7 +288,7 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
                     message: 'The patient has not shared any documents.',
                   )
                 else
-                  for (final doc in _sharedDocuments)
+                  for (final doc in _sharedDocuments) ...[
                     DetailRow(
                       label: doc.category.label,
                       value:
@@ -295,6 +296,20 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
                           '${doc.facilityOrDoctor.isEmpty ? '' : ' · ${doc.facilityOrDoctor}'}'
                           '${doc.notes == null || doc.notes!.isEmpty ? '' : '\n${doc.notes}'}',
                     ),
+
+                    // The image, not just its metadata. A shared biopsy report
+                    // whose page cannot be read is not a shared report.
+                    if (doc.hasViewableImage) ...[
+                      const SizedBox(height: 6),
+                      StoredDocumentImage(
+                        recordId: doc.id,
+                        title: doc.title,
+                        ownerUid: _case.patient.uid,
+                        height: 200,
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
               ],
             ),
             const SizedBox(height: 14),

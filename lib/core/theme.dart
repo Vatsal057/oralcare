@@ -193,3 +193,64 @@ class RiskVisuals {
     RiskCategory.higher => PatientOutputState.higherRisk,
   }, brightness);
 }
+
+/// Traffic-light flag for a risk band.
+///
+/// Kept separate from [RiskVisuals]: those are soft container tints chosen to
+/// sit behind body text, which is the opposite of what a flag needs. A flag has
+/// to read as green, yellow or red at a glance, so these are saturated.
+///
+/// The flag is never the only signal. Every place one is drawn also carries the
+/// band name and its score range in text, because colour alone is unreadable to
+/// a colour-blind patient and invisible to a screen reader.
+enum RiskFlag {
+  green,
+  yellow,
+  red;
+
+  Color get color => switch (this) {
+    RiskFlag.green => const Color(0xFF2E7D32),
+    RiskFlag.yellow => const Color(0xFFF9A825),
+    RiskFlag.red => const Color(0xFFC62828),
+  };
+
+  /// Background tint for the flag's own chip. Deliberately pale so the icon
+  /// keeps its contrast against it.
+  Color get tint => switch (this) {
+    RiskFlag.green => const Color(0xFFE8F5E9),
+    RiskFlag.yellow => const Color(0xFFFFF8E1),
+    RiskFlag.red => const Color(0xFFFFEBEE),
+  };
+
+  String get label => switch (this) {
+    RiskFlag.green => 'Green flag',
+    RiskFlag.yellow => 'Yellow flag',
+    RiskFlag.red => 'Red flag',
+  };
+
+  /// What the flag is telling the patient to do.
+  String get meaning => switch (this) {
+    RiskFlag.green => 'Keep up prevention and check again monthly.',
+    RiskFlag.yellow => 'Change habits and arrange a professional check.',
+    RiskFlag.red => 'See a dentist or doctor.',
+  };
+
+  static RiskFlag forCategory(RiskCategory category) => switch (category) {
+    RiskCategory.lower => RiskFlag.green,
+    RiskCategory.increased => RiskFlag.yellow,
+    RiskCategory.higher => RiskFlag.red,
+  };
+
+  /// The flag for the output the patient was actually shown.
+  ///
+  /// This is not always the band's flag: a red-flag override or a previous OSCC
+  /// raises a red flag on top of a green score, and showing green there would
+  /// contradict the instruction the same screen is giving.
+  static RiskFlag forState(PatientOutputState state) => switch (state) {
+    PatientOutputState.lowerRisk => RiskFlag.green,
+    PatientOutputState.increasedRisk => RiskFlag.yellow,
+    PatientOutputState.observeAndReview => RiskFlag.yellow,
+    PatientOutputState.higherRisk => RiskFlag.red,
+    PatientOutputState.professionalCheckRequired => RiskFlag.red,
+  };
+}

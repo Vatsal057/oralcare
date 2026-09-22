@@ -98,6 +98,22 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.auth.uid == uid;
     }
 
+    // Image bytes for a locker document: one per record, with the same id.
+    //
+    // The file document deliberately carries no sharing flag of its own. The
+    // patient makes one is_shared decision, on the record, and that decision has
+    // to govern the image too -- so this reads the parent record instead of
+    // duplicating a flag that could drift out of step with it.
+    match /users/{uid}/digilocker_files/{fileId} {
+      function parentRecord() {
+        return get(/databases/$(database)/documents/users/$(uid)/digilocker_records/$(fileId)).data;
+      }
+      allow read: if isSignedIn()
+        && (request.auth.uid == uid
+            || (isDoctor() && parentRecord().is_shared == 1));
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
     match /users/{uid}/cessation/{docId} {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
