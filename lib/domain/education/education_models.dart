@@ -46,11 +46,16 @@ class EducationTopic {
     required this.titles,
     required this.summaries,
     required this.contentSections,
+    this.imageAsset,
   });
 
   final String id;
   final TopicCategory category;
   final String iconName;
+
+  /// Header illustration. Null renders no image, so a topic is readable before
+  /// its artwork exists.
+  final String? imageAsset;
   final Map<EducationLanguage, String> titles;
   final Map<EducationLanguage, String> summaries;
   final Map<EducationLanguage, List<ContentSection>> contentSections;

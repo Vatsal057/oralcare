@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_images.dart';
+
 /// Clinical visual reference guide displaying realistic clinical photographs
 /// of oral potentially malignant disorders (OPMD) and suspicious lesions,
 /// enabling patients to visually compare their self-examination findings.
@@ -7,6 +9,25 @@ class LesionReferenceDialog extends StatelessWidget {
   const LesionReferenceDialog({super.key});
 
   static const List<_LesionExample> _examples = [
+    // Deliberately first. Patients judge their own mouth against a baseline far
+    // more reliably than against a catalogue of pathology, and without one every
+    // normal variation starts to look suspicious.
+    _LesionExample(
+      title: 'A Normal, Healthy Mouth',
+      subtitle: 'What healthy tissue looks like, for comparison',
+      imagePath: AppImages.signNormalMouth,
+      keyCharacteristics: [
+        'Even, uniform pink colour throughout',
+        'Moist surface with no patches, sores or rough areas',
+        'Gums sit snugly against the teeth without bleeding',
+        'Both sides of the mouth look the same as each other',
+      ],
+      clinicalSignificance:
+          'Compare your own mouth against this first. Most differences are '
+          'harmless, but anything that persists beyond two weeks should be '
+          'looked at by a dentist or doctor.',
+      isBaseline: true,
+    ),
     _LesionExample(
       title: 'Homogeneous Leukoplakia (White Patch)',
       subtitle: 'Flat, uniform white plaque that cannot be scraped off',
@@ -90,6 +111,100 @@ class LesionReferenceDialog extends StatelessWidget {
           'High-risk OPMD strongly associated with areca nut/betel quid and gutkha use. '
           'Requires immediate habit cessation and clinical monitoring.',
     ),
+
+    // Added after clinical review. These are the signs the red-flag checklist
+    // asks about that previously had no picture, so a patient was being asked to
+    // recognise something they had never been shown.
+    _LesionExample(
+      title: 'Erythroplakia (Red Patch)',
+      subtitle: 'Flat, velvety red patch that does not heal',
+      imagePath: AppImages.signRedPatch,
+      keyCharacteristics: [
+        'Smooth, velvety bright red area, level with the surface',
+        'Clearly outlined against the normal pink tissue around it',
+        'Does not bleed on its own and is often painless',
+        'Frequently on the floor of the mouth or soft palate',
+      ],
+      clinicalSignificance:
+          'Carries the highest risk of dysplasia of any OPMD, higher than a '
+          'white patch. A persistent red patch needs prompt clinical assessment '
+          'and biopsy.',
+    ),
+    _LesionExample(
+      title: 'Unexplained Bleeding from the Gums',
+      subtitle: 'Bleeding with no obvious cause such as injury',
+      imagePath: AppImages.signBleedingGums,
+      keyCharacteristics: [
+        'Blood at the gum margin without brushing or injury',
+        'Gums look red, swollen and tender',
+        'May recur over days or weeks in the same place',
+        'Can occur alongside a patch, lump or ulcer nearby',
+      ],
+      clinicalSignificance:
+          'Most gum bleeding is gum disease rather than cancer, but bleeding '
+          'that keeps returning in one spot, or sits next to a patch or lump, '
+          'needs examination.',
+    ),
+    _LesionExample(
+      title: 'Persistent Lump in the Neck',
+      subtitle: 'A visible swelling that makes the neck look uneven',
+      imagePath: AppImages.signNeckLump,
+      keyCharacteristics: [
+        'One side of the neck visibly fuller than the other',
+        'Firm, and often painless to press',
+        'Does not settle after two or three weeks',
+        'Skin over it looks normal and unbroken',
+      ],
+      clinicalSignificance:
+          'A firm, painless neck lump lasting more than two weeks can be the '
+          'first sign of spread and warrants urgent assessment, even when the '
+          'mouth itself looks normal.',
+    ),
+    _LesionExample(
+      title: 'Teeth Loosening Without an Obvious Cause',
+      subtitle: 'A tooth shifting or tilting with no decay or injury',
+      imagePath: AppImages.signLooseTeeth,
+      keyCharacteristics: [
+        'A tooth visibly tilted or out of line with its neighbours',
+        'Gum pulled away from it, exposing more of the root',
+        'No decay, injury or long-standing gum disease to explain it',
+        'May feel like a change in bite or in how dentures fit',
+      ],
+      clinicalSignificance:
+          'Sudden loosening of a healthy tooth can indicate underlying bone '
+          'destruction. It needs dental assessment with imaging rather than '
+          'simple extraction.',
+    ),
+    _LesionExample(
+      title: 'Swelling of the Mouth or Jaw',
+      subtitle: 'A firm swelling making the face look uneven',
+      imagePath: AppImages.signJawSwelling,
+      keyCharacteristics: [
+        'One side of the jaw or cheek clearly larger than the other',
+        'Firm rather than soft, and often painless',
+        'Present for weeks and slowly getting bigger',
+        'Skin over it normal in colour and unbroken',
+      ],
+      clinicalSignificance:
+          'A firm, slowly enlarging, painless swelling of the jaw is different '
+          'from a dental abscess, which is painful and comes on quickly. It '
+          'needs imaging and clinical assessment.',
+    ),
+    _LesionExample(
+      title: 'Pus or a Boil in the Mouth',
+      subtitle: 'A raised swelling on the gum with pus collecting',
+      imagePath: AppImages.signPusBoil,
+      keyCharacteristics: [
+        'Rounded swelling on the gum with a yellowish point',
+        'Surrounding gum red and inflamed',
+        'Usually painful, and may discharge a bad taste',
+        'Often near a decayed or heavily filled tooth',
+      ],
+      clinicalSignificance:
+          'Usually a dental abscess needing prompt dental treatment rather than '
+          'cancer. See a dentist quickly: it will not settle on its own, and '
+          'spreading infection in the mouth can become an emergency.',
+    ),
   ];
 
   @override
@@ -168,6 +283,7 @@ class _LesionExample {
     required this.imagePath,
     required this.keyCharacteristics,
     required this.clinicalSignificance,
+    this.isBaseline = false,
   });
 
   final String title;
@@ -175,6 +291,10 @@ class _LesionExample {
   final String imagePath;
   final List<String> keyCharacteristics;
   final String clinicalSignificance;
+
+  /// True for the healthy-mouth reference, which is styled as a baseline rather
+  /// than as another condition to worry about.
+  final bool isBaseline;
 }
 
 class _ExampleCard extends StatelessWidget {

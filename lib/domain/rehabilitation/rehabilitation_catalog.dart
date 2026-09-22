@@ -1,3 +1,4 @@
+import '../../core/app_images.dart';
 enum TreatmentModality {
   surgeryOnly,
   surgeryRadiotherapy,
@@ -29,6 +30,7 @@ class RehabExercise {
     required this.instruction,
     required this.frequency,
     required this.clinicalBenefit,
+    this.imageAsset,
   });
 
   final String title;
@@ -36,6 +38,13 @@ class RehabExercise {
   final String instruction;
   final String frequency;
   final String clinicalBenefit;
+
+  /// Demonstration photograph. A written instruction alone is hard to follow for
+  /// a physical manoeuvre, especially for someone recovering from surgery.
+  ///
+  /// Null renders no image rather than a broken frame, so an exercise stays
+  /// usable before its photograph exists.
+  final String? imageAsset;
 }
 
 class RehabProtocol {
@@ -68,6 +77,7 @@ class RehabilitationCatalog {
       exercises: [
         RehabExercise(
           title: 'Gentle Jaw Opening (Active Stretch)',
+        imageAsset: AppImages.rehabJawOpening,
           targetArea: 'Temporomandibular Joint & Masseter',
           instruction:
               'Slowly open your mouth as wide as comfortably possible without sharp pain. '
@@ -78,6 +88,7 @@ class RehabilitationCatalog {
         ),
         RehabExercise(
           title: 'Tongue Protrusion and Lateralization',
+        imageAsset: AppImages.rehabTongueMovement,
           targetArea: 'Remaining Tongue Musculature',
           instruction:
               'Stick tongue straight out toward chin. Then move tip to left corner of mouth, '
@@ -88,6 +99,7 @@ class RehabilitationCatalog {
         ),
         RehabExercise(
           title: 'Gentle Neck Rotation and Shoulder Shrugs',
+        imageAsset: AppImages.rehabNeckShoulder,
           targetArea: 'Sternocleidomastoid & Trapezius',
           instruction:
               'Slowly turn head to look over left shoulder, then right shoulder. '
@@ -115,6 +127,7 @@ class RehabilitationCatalog {
       exercises: [
         RehabExercise(
           title: 'Mendelsohn Maneuver (Swallow Protection)',
+        imageAsset: AppImages.rehabMendelsohn,
           targetArea: 'Pharyngeal Constrictors & Larynx',
           instruction:
               'Swallow your saliva and feel your Adams apple rise. At the peak of the swallow, '
@@ -125,6 +138,7 @@ class RehabilitationCatalog {
         ),
         RehabExercise(
           title: 'Passive Jaw Depressor Stretch (Wooden Spatula Stack)',
+        imageAsset: AppImages.rehabSpatulaStretch,
           targetArea: 'Fibrosed Masticatory Muscles',
           instruction:
               'Gently insert a stack of wooden tongue depressors between upper and lower molars. '
@@ -154,6 +168,7 @@ class RehabilitationCatalog {
       exercises: [
         RehabExercise(
           title: 'Effortful Swallow & Tongue Base Retraction',
+        imageAsset: AppImages.rehabEffortfulSwallow,
           targetArea: 'Oropharyngeal Wall & Tongue Base',
           instruction:
               'Swallow as hard as possible, squeezing all your throat muscles tightly together, '
@@ -164,6 +179,7 @@ class RehabilitationCatalog {
         ),
         RehabExercise(
           title: 'Deep Diaphragmatic Calming Breathing',
+        imageAsset: AppImages.rehabBreathing,
           targetArea: 'Autonomic Nervous System & Core',
           instruction:
               'Place one hand on chest and one on stomach. Breathe in slowly through nose for 4 counts '

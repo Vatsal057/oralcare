@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/optional_asset_image.dart';
 import '../../domain/education/education_catalog.dart';
 import '../../domain/education/education_models.dart';
 
@@ -276,18 +277,31 @@ class _TopicCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+              // Thumbnail where artwork exists, the icon tile otherwise, so the
+              // list stays tidy while the images arrive in batches.
+              if (topic.imageAsset != null)
+                SizedBox(
+                  width: 64,
+                  child: OptionalAssetImage(
+                    assetPath: topic.imageAsset,
+                    height: 64,
+                    allowFullScreen: false,
+                    borderRadius: 12,
+                  ),
+                )
+              else
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.article_outlined,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
                 ),
-                child: Icon(
-                  Icons.article_outlined,
-                  color: theme.colorScheme.onPrimaryContainer,
-                ),
-              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -366,6 +380,14 @@ class _TopicDetailScreenState extends State<_TopicDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (widget.topic.imageAsset != null) ...[
+              OptionalAssetImage(
+                assetPath: widget.topic.imageAsset,
+                height: 200,
+                title: widget.topic.title(_language),
+              ),
+              const SizedBox(height: 16),
+            ],
             Text(
               widget.topic.title(_language),
               style: theme.textTheme.headlineSmall?.copyWith(

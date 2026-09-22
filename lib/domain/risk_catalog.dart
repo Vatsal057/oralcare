@@ -11,6 +11,8 @@
 /// these numbers.
 library;
 
+import '../core/app_images.dart';
+
 /// A single selectable answer for a risk variable.
 class RiskOption {
   const RiskOption(
@@ -64,7 +66,16 @@ class RiskVariable {
     this.note,
     this.requiresExposure = false,
     this.derived = false,
+    this.imageAsset,
   });
+
+  /// Illustration of the habit or substance being asked about.
+  ///
+  /// Present for the habit questions so a patient with limited literacy can see
+  /// what is being asked rather than guessing at the label. Deliberately neutral
+  /// and documentary: an image that reads as shaming would push people toward
+  /// dishonest answers, and the score depends on honest ones.
+  final String? imageAsset;
 
   /// Database key. Persisted inside `risk_assessments.answers_json`.
   final String key;
@@ -163,6 +174,7 @@ class RiskCatalog {
     ageBand,
     RiskVariable(
       key: RiskKeys.smoking,
+      imageAsset: AppImages.riskSmoking,
       label: 'Smoking',
       options: [
         RiskOption('never', 'Never', score: 0),
@@ -173,6 +185,7 @@ class RiskCatalog {
     ),
     RiskVariable(
       key: RiskKeys.smokelessTobacco,
+      imageAsset: AppImages.riskSmokelessTobacco,
       label: 'Smokeless tobacco',
       options: [
         RiskOption('never', 'Never', score: 0),
@@ -182,6 +195,7 @@ class RiskCatalog {
     ),
     RiskVariable(
       key: RiskKeys.areca,
+      imageAsset: AppImages.riskArecaBetel,
       label: 'Areca / betel nut',
       options: [
         RiskOption('never', 'Never', score: 0),
@@ -192,6 +206,7 @@ class RiskCatalog {
     ),
     RiskVariable(
       key: RiskKeys.gutkha,
+      imageAsset: AppImages.riskGutkha,
       label: 'Gutkha / pan masala',
       role: RiskVariableRole.exposureOnly,
       note:
@@ -225,6 +240,7 @@ class RiskCatalog {
     ),
     RiskVariable(
       key: RiskKeys.alcohol,
+      imageAsset: AppImages.riskAlcohol,
       label: 'Alcohol',
       options: [
         RiskOption('none', 'None', score: 0),

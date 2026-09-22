@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/common.dart';
+import '../../core/app_images.dart';
+import '../../core/widgets/optional_asset_image.dart';
 import '../../core/widgets/local_photo.dart';
 import '../../data/photo_document_store.dart';
 import '../../data/photo_store.dart';
@@ -181,6 +183,16 @@ class _LesionScreenState extends State<LesionScreen> {
               title: 'Where and how long',
               icon: Icons.place_outlined,
               children: [
+                // Mouth map above the site list. The site is clinical data a
+                // doctor reads, and picking it from a diagram is more reliable
+                // than matching a phrase like "retromolar area" to a place in
+                // your own mouth.
+                const OptionalAssetImage(
+                  assetPath: AppImages.mouthMap,
+                  height: 190,
+                  title: 'Areas of the mouth',
+                ),
+                const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   initialValue: draft.site,
                   isExpanded: true,

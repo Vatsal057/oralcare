@@ -4,7 +4,7 @@
 **Platforms:** Android (full), Web (full except camera capture)
 **Live web build:** https://oralcare.web.app (the original `oral-cancer-pilot-1027-dc3a3.web.app` also stays current — both sites receive every deploy)
 **Backend:** Firebase Authentication + Cloud Firestore (free Spark plan; no Cloud Storage, no Cloud Functions)
-**Verification at time of writing:** `flutter analyze` clean · 174 tests pass · web and debug APK build
+**Verification at time of writing:** `flutter analyze` clean · 183 tests pass · web and debug APK build
 
 ---
 
@@ -1028,6 +1028,44 @@ The questionnaire's demographic fields not carried into the app — education le
 
 ---
 
+## 14A. Illustration inventory
+
+Expanded after clinical review, where the reviewing clinician noted the app had too few images. The audit found that only three screens referenced an image at all, and that the education, cessation and risk-factor content models had no image field whatsoever.
+
+`AppImages` (`lib/core/app_images.dart`) declares every expected asset in one place. It is deliberately free of any Flutter import so the `domain/` catalogues can reference paths without pulling UI into that layer.
+
+| Group | Count | Where it appears |
+|---|---|---|
+| Self-examination sites | 8 | One per site on the guided examination (§4.6) |
+| Lesion reference gallery | 13 | Clinical photo gallery, reachable from the self-examination, the red-flag checklist and the home screen |
+| Rehabilitation exercises | 7 | One per exercise, on the post-treatment screen (§8.6) |
+| Education topics | 7 | Thumbnail in the topic list, header on the topic itself (§8.1) |
+| Risk-factor habit questions | 5 | Above the smoking, smokeless tobacco, areca, gutkha and alcohol questions (§4.4) |
+| Mouth map | 1 | Above the lesion site picker (§4.7) |
+| **Total** | **41** | |
+
+### Graceful absence
+
+Artwork arrives in batches, so every new illustration is drawn through `OptionalAssetImage`, which renders **nothing** when the asset is absent rather than a broken-image frame. The consequence is that a picture appears the moment its file lands in `assets/images/`, with no code change — the same pattern that was already used for the throat illustration.
+
+The cost of that design is that a mistyped path is invisible in the running app. `test/image_coverage_test.dart` closes the gap: it checks that every declared path is well formed and unique and that every topic, exercise and habit question points at a declared constant, then prints which files are still outstanding. It fails only for a missing **self-examination** illustration, because those eight are the guided examination itself rather than supporting material.
+
+### The gallery leads with a healthy mouth
+
+The reference gallery opens with a normal, healthy mouth rather than a pathology. Patients judge their own mouth far more reliably against a baseline than against a catalogue of disease — without one, every normal variation starts to look suspicious.
+
+### Signs added to match the red-flag checklist
+
+The checklist asks the patient to recognise 13 findings by name. Nine are visually depictable, and six of those had no picture. Added: erythroplakia (red patch alone), unexplained gum bleeding, a visible neck lump, teeth loosening, swelling of the mouth or jaw, and pus or a boil. The last two come from the Sree questionnaire's §3 sign list rather than from the IPO document.
+
+The red-flag screen also gained a **"Not sure? Compare with clinical photos"** link. The self-examination screen had linked to the gallery all along; the checklist — the screen that actually asks a patient to identify a sign by name — did not.
+
+### Deliberately without images
+
+The emergency screen stays text-only. Photographs of severe bleeding or airway distress would be distressing, and someone in that situation needs a large phone number rather than a picture. The risk-factor illustrations are neutral and documentary for a related reason: an image that reads as shaming pushes people toward dishonest answers, and the score depends on honest ones.
+
+---
+
 ## 15. Open items
 
 ### 15.1 Clinical decision required: 2 weeks or 3 weeks?
@@ -1091,7 +1129,7 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 
 ## 16. Test coverage
 
-174 tests across 13 files. All pass.
+183 tests across 14 files. All pass.
 
 | File | Covers |
 |---|---|
@@ -1105,6 +1143,7 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 | `lesion_photo_test.dart` | The three photograph states, legacy-row compatibility, the 1 MiB limit, and that withdrawing consent cuts every route to the image |
 | `consent_wording_test.dart` | Consent-form accuracy: the stale device-only claims cannot reappear, and the account/encryption/audit-gap/coordinator/withdrawal disclosures must stay stated |
 | `review_feedback_test.dart` | The clinical-review changes: flag-to-band mapping, that an override shows red over a green band, band ranges derived from the cut-offs, and that a DigiLocker local path is not a viewable image |
+| `image_coverage_test.dart` | Every declared asset path is well formed and unique, every education topic / exercise / habit question points at a declared asset, and the eight self-examination illustrations must exist. Reports which artwork is still outstanding |
 | `enrolment_switch_test.dart` | Behaviour under both `ALLOW_ENROLMENT_CODE` builds |
 | `new_features_test.dart` | CareConnect module models |
 | `app_smoke_test.dart` | App boots, role selection renders |
@@ -1174,7 +1213,7 @@ Build switches:
 | Education topics | 7 (3 languages) |
 | Myths and facts | 5 |
 | FAQs | 5 |
-| Clinical reference photographs | 6 |
+| Clinical reference photographs | 13 (incl. a healthy-mouth baseline) |
 | DigiLocker categories | 13 |
 | Screening centres (seed) | 5, across 4 types |
 | Cessation milestones | 6 |
@@ -1183,7 +1222,7 @@ Build switches:
 | Emergency conditions | 6 |
 | Reminder types | 8 |
 | Firestore collections / subcollections | 13 |
-| Tests | 174 |
+| Tests | 183 |
 
 ## Appendix B — Key constants
 

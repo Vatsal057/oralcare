@@ -1,3 +1,5 @@
+import '../../core/app_images.dart';
+
 import 'education_models.dart';
 
 /// Clinical education catalogue implementing all content required by
@@ -10,6 +12,7 @@ class EducationCatalog {
     // 1. What is Oral Cancer?
     EducationTopic(
       id: 'what_is_oral_cancer',
+      imageAsset: AppImages.eduWhatIsOralCancer,
       category: TopicCategory.basics,
       iconName: 'info_outline',
       titles: {
@@ -83,6 +86,7 @@ class EducationCatalog {
     // 2. Risk Factors
     EducationTopic(
       id: 'risk_factors',
+      imageAsset: AppImages.eduRiskFactors,
       category: TopicCategory.riskFactors,
       iconName: 'warning_amber_outlined',
       titles: {
@@ -145,6 +149,7 @@ class EducationCatalog {
     // 3. Early Signs & Symptoms
     EducationTopic(
       id: 'early_signs_symptoms',
+      imageAsset: AppImages.eduEarlySigns,
       category: TopicCategory.earlySigns,
       iconName: 'visibility_outlined',
       titles: {
@@ -212,6 +217,7 @@ class EducationCatalog {
     // 4. Prevention & Habit Cessation
     EducationTopic(
       id: 'prevention_cessation',
+      imageAsset: AppImages.eduCessation,
       category: TopicCategory.prevention,
       iconName: 'smoke_free_outlined',
       titles: {
@@ -274,6 +280,7 @@ class EducationCatalog {
     // 5. Oral Hygiene & Nutrition
     EducationTopic(
       id: 'hygiene_nutrition',
+      imageAsset: AppImages.eduHygieneNutrition,
       category: TopicCategory.prevention,
       iconName: 'restaurant_outlined',
       titles: {
@@ -332,6 +339,7 @@ class EducationCatalog {
     // 6. Biopsy, Referral & Treatment
     EducationTopic(
       id: 'biopsy_and_treatment',
+      imageAsset: AppImages.eduBiopsyTreatment,
       category: TopicCategory.biopsyTreatment,
       iconName: 'healing_outlined',
       titles: {
@@ -382,6 +390,7 @@ class EducationCatalog {
     // 7. Caregiver Guidance
     EducationTopic(
       id: 'caregiver_guidance',
+      imageAsset: AppImages.eduCaregiver,
       category: TopicCategory.caregiver,
       iconName: 'diversity_1_outlined',
       titles: {

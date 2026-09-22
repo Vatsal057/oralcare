@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/widgets/common.dart';
+import '../../core/widgets/optional_asset_image.dart';
 import '../../domain/rehabilitation/rehabilitation_catalog.dart';
 
 class RehabilitationScreen extends StatefulWidget {
@@ -311,6 +312,16 @@ class _ExerciseCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // A written instruction alone is hard to follow for a physical
+            // manoeuvre, particularly for someone recovering from surgery.
+            if (exercise.imageAsset != null) ...[
+              OptionalAssetImage(
+                assetPath: exercise.imageAsset,
+                height: 180,
+                title: exercise.title,
+              ),
+              const SizedBox(height: 12),
+            ],
             Row(
               children: [
                 Expanded(

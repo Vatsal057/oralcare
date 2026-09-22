@@ -8,6 +8,7 @@ import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
 import '../../state/locale_controller.dart';
 import 'flow_route.dart';
+import 'lesion_reference_dialog.dart';
 import 'self_exam_screen.dart';
 
 /// Red-flag safety check (spec section 2.3).
@@ -42,6 +43,21 @@ class RedFlagScreen extends StatelessWidget {
                   'mean you have cancer. It means a professional should look at '
                   'it.',
               severity: NoticeSeverity.info,
+            ),
+            const SizedBox(height: 10),
+
+            // The checklist asks the patient to recognise findings by name. This
+            // screen had no route to the photographs, so someone unsure what a
+            // "red-and-white patch" looks like had nothing to check against --
+            // while the self-examination screen linked to the gallery all along.
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const LesionReferenceDialog(),
+                ),
+              ),
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('Not sure? Compare with clinical photos'),
             ),
             const SizedBox(height: 14),
             if (durationLabel != null)

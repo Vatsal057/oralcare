@@ -1,0 +1,139 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:oralcare/core/app_images.dart';
+import 'package:oralcare/domain/education/education_catalog.dart';
+import 'package:oralcare/domain/rehabilitation/rehabilitation_catalog.dart';
+import 'package:oralcare/domain/risk_catalog.dart';
+
+/// Illustrations are content, and content that silently fails to appear is worse
+/// than content that is obviously absent.
+///
+/// [OptionalAssetImage] collapses to nothing when an asset is missing, which is
+/// what lets artwork land in batches without breaking the build. The cost is that
+/// a typo in a path is invisible in the running app. These tests close that gap:
+/// every declared path must be spelled consistently, and the report at the end
+/// prints which files are still outstanding.
+void main() {
+  group('asset paths are well formed', () {
+    test('every declared image lives under assets/images', () {
+      for (final path in AppImages.all) {
+        expect(path, startsWith('assets/images/'), reason: path);
+      }
+    });
+
+    test('every declared image is a png', () {
+      for (final path in AppImages.all) {
+        expect(path, endsWith('.png'), reason: path);
+      }
+    });
+
+    test('no path is declared twice', () {
+      expect(
+        AppImages.all.toSet().length,
+        AppImages.all.length,
+        reason: 'a duplicated constant means two things share one picture',
+      );
+    });
+
+    test('the inventory covers all 41 expected illustrations', () {
+      expect(AppImages.all.length, 41);
+    });
+  });
+
+  group('content catalogues point at declared assets', () {
+    test('every education topic image is in the inventory', () {
+      final withImages = EducationCatalog.topics
+          .where((t) => t.imageAsset != null)
+          .toList();
+      expect(withImages.length, EducationCatalog.topics.length,
+          reason: 'every topic should carry a header image');
+      for (final topic in withImages) {
+        expect(AppImages.all, contains(topic.imageAsset), reason: topic.id);
+      }
+    });
+
+    test('every rehabilitation exercise image is in the inventory', () {
+      final exercises = RehabilitationCatalog.protocols.values
+          .expand((p) => p.exercises)
+          .toList();
+      expect(exercises, isNotEmpty);
+      for (final exercise in exercises) {
+        expect(
+          exercise.imageAsset,
+          isNotNull,
+          reason: 'a physical exercise needs a demonstration: ${exercise.title}',
+        );
+        expect(AppImages.all, contains(exercise.imageAsset));
+      }
+    });
+
+    test('the habit questions carry an illustration', () {
+      const habitKeys = [
+        RiskKeys.smoking,
+        RiskKeys.smokelessTobacco,
+        RiskKeys.areca,
+        RiskKeys.gutkha,
+        RiskKeys.alcohol,
+      ];
+      for (final key in habitKeys) {
+        final variable = RiskCatalog.variableFor(key);
+        expect(variable.imageAsset, isNotNull, reason: key);
+        expect(AppImages.all, contains(variable.imageAsset), reason: key);
+      }
+    });
+
+    test('non-habit questions deliberately have no illustration', () {
+      // A picture next to "previous oral cancer" or a duration band would add
+      // nothing and would only make the form longer to scroll.
+      for (final key in [
+        RiskKeys.previousOscc,
+        RiskKeys.lesionDuration,
+        RiskKeys.familyHistory,
+      ]) {
+        expect(RiskCatalog.variableFor(key).imageAsset, isNull, reason: key);
+      }
+    });
+  });
+
+  /// Not a failure when artwork is outstanding -- the app is built to run without
+  /// it. This reports the gap so it stays visible instead of being forgotten.
+  test('report which illustrations are still missing from the bundle', () {
+    final missing = <String>[];
+    for (final path in AppImages.all) {
+      if (!File(path).existsSync()) missing.add(path);
+    }
+
+    final present = AppImages.all.length - missing.length;
+    stdout.writeln(
+      'Illustrations: $present of ${AppImages.all.length} present.',
+    );
+    if (missing.isNotEmpty) {
+      stdout.writeln('Still to add:');
+      for (final path in missing) {
+        stdout.writeln('  - ${path.split('/').last}');
+      }
+    }
+
+    // The eight self-examination sites are the one set that must be complete:
+    // they are the guided examination itself, not supporting material.
+    const sites = [
+      AppImages.siteLips,
+      AppImages.siteInnerCheeks,
+      AppImages.siteGums,
+      AppImages.siteTongue,
+      AppImages.siteFloorOfMouth,
+      AppImages.sitePalate,
+      AppImages.siteNeck,
+      AppImages.siteThroat,
+    ];
+    for (final site in sites) {
+      expect(
+        File(site).existsSync(),
+        isTrue,
+        reason: 'a guided self-examination step cannot ship without its '
+            'illustration: $site',
+      );
+    }
+  });
+}

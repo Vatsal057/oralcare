@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/optional_asset_image.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
 import 'flow_route.dart';
@@ -176,14 +177,30 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     final variable = RiskCatalog.variableFor(key);
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
-      child: SingleChoiceField<String>(
-        label: variable.label,
-        note: variable.note,
-        options: variable.options.map((o) => o.value).toList(),
-        labelBuilder: (value) => variable.optionFor(value)?.label ?? value,
-        value: flow.answer(key),
-        showError: _showErrors,
-        onChanged: (value) => flow.setAnswer(key, value),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Illustration for the habit questions, so a patient who cannot read
+          // the label can still see what is being asked. Renders nothing when
+          // the variable has no image, which is most of them.
+          if (variable.imageAsset != null) ...[
+            OptionalAssetImage(
+              assetPath: variable.imageAsset,
+              height: 130,
+              title: variable.label,
+            ),
+            const SizedBox(height: 10),
+          ],
+          SingleChoiceField<String>(
+            label: variable.label,
+            note: variable.note,
+            options: variable.options.map((o) => o.value).toList(),
+            labelBuilder: (value) => variable.optionFor(value)?.label ?? value,
+            value: flow.answer(key),
+            showError: _showErrors,
+            onChanged: (value) => flow.setAnswer(key, value),
+          ),
+        ],
       ),
     );
   }
