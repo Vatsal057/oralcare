@@ -225,6 +225,7 @@ class SingleChoiceField<T> extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.note,
+    this.secondaryLabel,
     this.isRequired = true,
     this.showError = false,
   });
@@ -235,6 +236,14 @@ class SingleChoiceField<T> extends StatelessWidget {
   final T? value;
   final ValueChanged<T?> onChanged;
   final String? note;
+
+  /// The same question in the other language, shown under the label.
+  ///
+  /// In Kannada mode the English term stays visible: it is the wording a
+  /// clinician will use when asking about it, so hiding it would leave the
+  /// patient unable to repeat the finding at the clinic.
+  final String? secondaryLabel;
+
   final bool isRequired;
   final bool showError;
 
@@ -264,6 +273,16 @@ class SingleChoiceField<T> extends StatelessWidget {
             ),
           ),
         ),
+        if (secondaryLabel != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: Text(
+              secondaryLabel!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         if (note != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 6),

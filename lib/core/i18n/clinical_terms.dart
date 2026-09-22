@@ -181,6 +181,28 @@ class ClinicalTerms {
     'ಬಾಯಿಯ ಕ್ಯಾನ್ಸರ್ ಪತ್ತೆಗೆ ನಿಯಮಿತ ತಪಾಸಣೆ ಅಗತ್ಯ',
   );
 
+  /// Risk-assessment questions, keyed to [RiskKeys].
+  ///
+  /// Only the habit questions appear here, because those are the ones the
+  /// questionnaire supplies Kannada for. The remaining questions — previous
+  /// OPMD/OSCC, gutkha, exposure duration and frequency, the lesion gate — stay
+  /// in English on purpose: inventing Kannada for them would risk a patient
+  /// answering a different question from the one being scored.
+  static const riskQuestions = <String, Term>{
+    'smoking': smoking,
+    'smokeless_tobacco': smokelessTobacco,
+    'areca_betel': areca,
+    'alcohol': alcohol,
+    'family_history': familyHistory,
+  };
+
+  /// Answer values shared across questions, keyed to [AnswerValues].
+  static const answers = <String, Term>{
+    'yes': yes,
+    'no': no,
+    'dont_know': dontKnow,
+  };
+
   /// Label for a red-flag key, falling back to English when a term is missing.
   static String redFlag(String key, AppLocale locale, String fallback) =>
       redFlags[key]?.call(locale) ?? fallback;
@@ -188,4 +210,20 @@ class ClinicalTerms {
   /// Label for an exam-site key, falling back to English.
   static String examSite(String key, AppLocale locale, String fallback) =>
       examSites[key]?.call(locale) ?? fallback;
+
+  /// Label for a risk-assessment question, falling back to English.
+  static String riskQuestion(String key, AppLocale locale, String fallback) =>
+      riskQuestions[key]?.call(locale) ?? fallback;
+
+  /// Label for an answer option, falling back to English.
+  ///
+  /// Options with no verified Kannada — "Never", "Former", "Current, regular"
+  /// and so on — fall through to the English label rather than being guessed at.
+  static String answerOption(String value, AppLocale locale, String fallback) =>
+      answers[value]?.call(locale) ?? fallback;
+
+  /// True when a term exists in the given locale, so a caller can decide whether
+  /// to show a second line rather than repeating the same English twice.
+  static bool hasTranslation(String? translated, String original) =>
+      translated != null && translated != original;
 }

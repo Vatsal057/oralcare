@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/clinical_notices.dart';
 import '../../core/i18n/clinical_terms.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/language_toggle_button.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
 import '../../state/locale_controller.dart';
@@ -31,7 +32,10 @@ class RedFlagScreen extends StatelessWidget {
     ).optionFor(flow.answer(RiskKeys.lesionDuration))?.label;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Safety check')),
+      appBar: AppBar(
+        title: const Text('Safety check'),
+        actions: const [LanguageToggleButton()],
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),

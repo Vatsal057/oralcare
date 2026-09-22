@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/i18n/clinical_terms.dart';
 import '../../core/app_images.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/language_toggle_button.dart';
 import '../../core/widgets/fullscreen_image.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
@@ -28,6 +29,7 @@ class SelfExamScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Step 2 of 3 · Self-examination'),
+        actions: const [LanguageToggleButton()],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(

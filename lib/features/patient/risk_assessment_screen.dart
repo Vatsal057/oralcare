@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
+import '../../core/i18n/clinical_terms.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/language_toggle_button.dart';
 import '../../core/widgets/optional_asset_image.dart';
 import '../../domain/risk_catalog.dart';
 import '../../state/assessment_flow.dart';
+import '../../state/locale_controller.dart';
 import 'flow_route.dart';
 import 'red_flag_screen.dart';
 import 'self_exam_screen.dart';
@@ -60,6 +63,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Step 1 of 3 · Risk factors'),
+        actions: const [LanguageToggleButton()],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(
@@ -73,6 +77,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            const PartialTranslationNote(),
             const NoticeBanner(
               message: ClinicalNotices.provisionalScores,
               severity: NoticeSeverity.caution,
@@ -175,6 +180,13 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
 
   Widget _question(AssessmentFlow flow, String key) {
     final variable = RiskCatalog.variableFor(key);
+    final locale = context.watch<LocaleController>().locale;
+    final localisedLabel = ClinicalTerms.riskQuestion(
+      key,
+      locale,
+      variable.label,
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(
@@ -192,10 +204,19 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
             const SizedBox(height: 10),
           ],
           SingleChoiceField<String>(
-            label: variable.label,
+            label: localisedLabel,
+            // In Kannada, keep the English question underneath. Only the habit
+            // questions have verified Kannada, so the rest resolve to the same
+            // English string and this stays null rather than printing it twice.
+            secondaryLabel: localisedLabel == variable.label
+                ? null
+                : variable.label,
             note: variable.note,
             options: variable.options.map((o) => o.value).toList(),
-            labelBuilder: (value) => variable.optionFor(value)?.label ?? value,
+            labelBuilder: (value) {
+              final english = variable.optionFor(value)?.label ?? value;
+              return ClinicalTerms.answerOption(value, locale, english);
+            },
             value: flow.answer(key),
             showError: _showErrors,
             onChanged: (value) => flow.setAnswer(key, value),
