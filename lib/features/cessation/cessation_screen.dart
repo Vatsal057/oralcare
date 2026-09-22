@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/common.dart';
+import '../../core/widgets/load_failure.dart';
+import '../../core/load_guard.dart';
 import '../../data/repositories/cessation_repository.dart';
 import '../../domain/cessation/cessation_models.dart';
 import '../../state/session_controller.dart';
@@ -16,6 +18,7 @@ class CessationScreen extends StatefulWidget {
 class _CessationScreenState extends State<CessationScreen> {
   QuitPlan? _plan;
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -28,12 +31,21 @@ class _CessationScreenState extends State<CessationScreen> {
     final repo = context.read<CessationRepository>();
     final patientId = session.user?.patientId ?? 'guest';
 
-    final plan = await repo.getQuitPlan(patientId);
-    if (!mounted) return;
-    setState(() {
-      _plan = plan;
-      _loading = false;
-    });
+    try {
+      final plan = await LoadGuard.run(repo.getQuitPlan(patientId));
+      if (!mounted) return;
+      setState(() {
+        _plan = plan;
+        _error = null;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = LoadGuard.message(e, what: 'quit plan');
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _openSetupPlanDialog() async {
@@ -89,6 +101,20 @@ class _CessationScreenState extends State<CessationScreen> {
 
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Habit Cessation & Recovery')),
+        body: LoadFailure(
+          title: 'Could not load your quit plan',
+          message: _error!,
+          onRetry: () {
+            setState(() => _loading = true);
+            _load();
+          },
+        ),
+      );
     }
 
     final plan = _plan;

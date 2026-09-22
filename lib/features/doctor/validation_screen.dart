@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
+import '../../core/load_guard.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
 import '../../data/models/patient_case.dart';
@@ -47,10 +48,10 @@ class _ValidationScreenState extends State<ValidationScreen> {
     try {
       // A coordinator validates the whole pilot; a clinician sees only their own
       // patients, and the scope is stated on screen either way.
-      final cohortWide = await auth.hasCoordinatorClaim();
+      final cohortWide = await LoadGuard.run(auth.hasCoordinatorClaim());
       final cases = cohortWide
-          ? await clinical.cohortCases()
-          : await clinical.allSharedCases();
+          ? await LoadGuard.run(clinical.cohortCases())
+          : await LoadGuard.run(clinical.allSharedCases());
       if (!mounted) return;
       setState(() {
         _cohortWide = cohortWide;

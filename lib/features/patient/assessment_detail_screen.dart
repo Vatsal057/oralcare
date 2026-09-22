@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
+import '../../core/load_guard.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/lesion_photo_view.dart';
 import '../../core/widgets/risk_flag_scale.dart';
+import '../../core/widgets/load_failure.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/models/clinical_models.dart';
 import '../../data/repositories/assessment_repository.dart';
@@ -35,6 +37,7 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
   List<LesionRecord> _lesions = [];
   ClinicianAssessmentRecord? _clinician;
   bool _loading = true;
+  String? _error;
   late bool _shared;
   String? _sharedWithUid;
 
@@ -56,17 +59,28 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
     final assessments = context.read<AssessmentRepository>();
     final clinical = context.read<ClinicalRepository>();
 
-    final selfExam = await assessments.selfExaminationFor(id);
-    final lesions = await assessments.lesionsFor(id);
-    final clinician = await clinical.clinicianAssessmentFor(id);
+    try {
+      final selfExam = await LoadGuard.run(assessments.selfExaminationFor(id));
+      final lesions = await LoadGuard.run(assessments.lesionsFor(id));
+      final clinician = await LoadGuard.run(
+        clinical.clinicianAssessmentFor(id),
+      );
 
-    if (!mounted) return;
-    setState(() {
-      _selfExam = selfExam;
-      _lesions = lesions;
-      _clinician = clinician;
-      _loading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _selfExam = selfExam;
+        _lesions = lesions;
+        _clinician = clinician;
+        _error = null;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = LoadGuard.message(e, what: 'check');
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -81,6 +95,15 @@ class _AssessmentDetailScreenState extends State<AssessmentDetailScreen> {
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? LoadFailure(
+                title: 'Could not load this check',
+                message: _error!,
+                onRetry: () {
+                  setState(() => _loading = true);
+                  _load();
+                },
+              )
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [

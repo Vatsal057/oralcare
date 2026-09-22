@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
+import '../../core/load_guard.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/risk_flag_scale.dart';
@@ -64,15 +65,19 @@ class _ResultScreenState extends State<ResultScreen> {
           .buildAssessment(result)
           .copyWith(followUpDue: plan.due, followUpStatus: plan.status);
 
-      final id = await repo.saveAssessment(assessment);
+      final id = await LoadGuard.run(repo.saveAssessment(assessment));
 
-      await repo.saveSelfExamination(
-        flow.buildSelfExamination(assessmentId: id),
+      await LoadGuard.run(
+        repo.saveSelfExamination(
+          flow.buildSelfExamination(assessmentId: id),
+        ),
       );
 
       if (flow.lesion.hasAnyContent) {
-        final lesionId = await repo.saveLesion(
-          flow.lesion.toRecord(patientId: flow.patientId, assessmentId: id),
+        final lesionId = await LoadGuard.run(
+          repo.saveLesion(
+            flow.lesion.toRecord(patientId: flow.patientId, assessmentId: id),
+          ),
         );
 
         // Store the photograph now that the lesion has an id. A device-local
@@ -82,15 +87,19 @@ class _ResultScreenState extends State<ResultScreen> {
         // believing a doctor can see an image that never left the phone.
         final bytes = flow.lesion.photoBytes;
         if (bytes != null && flow.photographAllowed) {
-          final stored = await photos.save(
-            assessmentId: id,
-            lesionId: lesionId,
-            bytes: bytes,
-          );
-          if (stored) {
-            await repo.markLesionPhotoStored(
+          final stored = await LoadGuard.run(
+            photos.save(
               assessmentId: id,
               lesionId: lesionId,
+              bytes: bytes,
+            ),
+          );
+          if (stored) {
+            await LoadGuard.run(
+              repo.markLesionPhotoStored(
+                assessmentId: id,
+                lesionId: lesionId,
+              ),
             );
           }
           photoStored = stored;

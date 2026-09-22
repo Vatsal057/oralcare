@@ -4,7 +4,7 @@
 **Platforms:** Android (full), Web (full except camera capture)
 **Live web build:** https://oralcare.web.app (the original `oral-cancer-pilot-1027-dc3a3.web.app` also stays current — both sites receive every deploy)
 **Backend:** Firebase Authentication + Cloud Firestore (free Spark plan; no Cloud Storage, no Cloud Functions)
-**Verification at time of writing:** `flutter analyze` clean · 183 tests pass · web, debug APK and 33 MB arm64 release APK build · 41 of 41 illustrations present
+**Verification at time of writing:** `flutter analyze` clean · 205 tests pass · web, debug APK and 33 MB arm64 release APK build · 41 of 41 illustrations present
 
 ---
 
@@ -1129,7 +1129,7 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 
 ## 16. Test coverage
 
-183 tests across 14 files. All pass.
+205 tests across 17 files. All pass.
 
 | File | Covers |
 |---|---|
@@ -1142,6 +1142,8 @@ The existing gallery (A–F) covers leukoplakia, erythroleukoplakia, verrucous l
 | `reminder_service_test.dart` | Platform gating, id allocation |
 | `lesion_photo_test.dart` | The three photograph states, legacy-row compatibility, the 1 MiB limit, and that withdrawing consent cuts every route to the image |
 | `consent_wording_test.dart` | Consent-form accuracy: the stale device-only claims cannot reappear, and the account/encryption/audit-gap/coordinator/withdrawal disclosures must stay stated |
+| `load_guard_test.dart` | The deadline turns a never-completing read into a throw, failures are explained in plain language, and a source scan asserts no loader can leave a spinner turning |
+| `language_switch_test.dart` | Tapping the toggle re-renders text in Kannada, and every habit question, red flag and exam site resolves to real Kannada rather than falling back to English |
 | `review_feedback_test.dart` | The clinical-review changes: flag-to-band mapping, that an override shows red over a green band, band ranges derived from the cut-offs, and that a DigiLocker local path is not a viewable image |
 | `image_coverage_test.dart` | Every declared asset path is well formed, unique and a `.jpg`; every education topic / exercise / habit question points at a declared asset; the eight self-examination illustrations must exist. Reports how much artwork is present (41 of 41) |
 | `enrolment_switch_test.dart` | Behaviour under both `ALLOW_ENROLMENT_CODE` builds |
@@ -1222,7 +1224,7 @@ Build switches:
 | Emergency conditions | 6 |
 | Reminder types | 8 |
 | Firestore collections / subcollections | 13 |
-| Tests | 183 |
+| Tests | 205 |
 
 ## Appendix B — Key constants
 

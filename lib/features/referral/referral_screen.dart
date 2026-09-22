@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/common.dart';
+import '../../core/load_guard.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/repositories/appointment_repository.dart';
 import '../../data/repositories/assessment_repository.dart';
@@ -38,12 +39,22 @@ class _ReferralScreenState extends State<ReferralScreen> {
   }
 
   Future<void> _loadCenters() async {
-    final result = await context.read<ScreeningCenterRepository>().load();
-    if (!mounted) return;
-    setState(() {
-      _centers = result.centers;
-      _centersAreBundled = result.isBundled;
-    });
+    try {
+      final result = await LoadGuard.run(
+        context.read<ScreeningCenterRepository>().load(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _centers = result.centers;
+        _centersAreBundled = result.isBundled;
+      });
+    } catch (_) {
+      // The repository already falls back to the bundled catalogue, so the
+      // directory is never empty. Mark it bundled so the screen tells the
+      // patient the details may be out of date and to phone ahead.
+      if (!mounted) return;
+      setState(() => _centersAreBundled = true);
+    }
   }
 
   @override
@@ -55,8 +66,10 @@ class _ReferralScreenState extends State<ReferralScreen> {
   Future<void> _loadAppointments() async {
     final user = context.read<SessionController>().user;
     try {
-      final list = await context.read<AppointmentRepository>().listForPatient(
-        user?.patientId ?? 'GUEST',
+      final list = await LoadGuard.run(
+        context.read<AppointmentRepository>().listForPatient(
+          user?.patientId ?? 'GUEST',
+        ),
       );
       if (!mounted) return;
       setState(() => _appointments = list);
@@ -93,9 +106,17 @@ class _ReferralScreenState extends State<ReferralScreen> {
     final repo = context.read<AssessmentRepository>();
     final patientId = session.user?.patientId;
     if (patientId != null) {
-      final list = await repo.assessmentsForPatient(patientId);
-      if (list.isNotEmpty && mounted) {
-        setState(() => _latestAssessment = list.first);
+      try {
+        final list = await LoadGuard.run(
+          repo.assessmentsForPatient(patientId),
+        );
+        if (list.isNotEmpty && mounted) {
+          setState(() => _latestAssessment = list.first);
+        }
+      } catch (_) {
+        // Only feeds the referral slip. Failing quietly is right here: the slip
+        // simply reports no assessment rather than blocking the centre list,
+        // which is what the patient actually came to this screen for.
       }
     }
   }

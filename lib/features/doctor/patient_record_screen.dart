@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../core/load_guard.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/lesion_photo_view.dart';
 import '../../core/widgets/stored_document_image.dart';
@@ -45,9 +46,11 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
   /// "could not load".
   Future<void> _loadSharedDocuments() async {
     try {
-      final docs = await context
-          .read<DigiLockerRepository>()
-          .sharedRecordsForUid(_case.patient.uid);
+      final docs = await LoadGuard.run(
+        context.read<DigiLockerRepository>().sharedRecordsForUid(
+          _case.patient.uid,
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _sharedDocuments = docs;
@@ -63,14 +66,27 @@ class _PatientRecordScreenState extends State<PatientRecordScreen> {
     final id = _case.assessment.id;
     if (id == null) return;
     setState(() => _loading = true);
-    final fresh = await context.read<ClinicalRepository>().caseForAssessment(
-      id,
-    );
-    if (!mounted) return;
-    setState(() {
-      if (fresh != null) _case = fresh;
-      _loading = false;
-    });
+    try {
+      final fresh = await LoadGuard.run(
+        context.read<ClinicalRepository>().caseForAssessment(id),
+      );
+      if (!mounted) return;
+      setState(() {
+        if (fresh != null) _case = fresh;
+        _loading = false;
+      });
+    } catch (e) {
+      // The record already on screen stays: it is still the last known state.
+      // Leaving the spinner turning would be worse than showing what we have
+      // and saying the refresh failed.
+      if (!mounted) return;
+      setState(() => _loading = false);
+      showSnack(
+        context,
+        LoadGuard.message(e, what: 'latest record'),
+        isError: true,
+      );
+    }
   }
 
   @override

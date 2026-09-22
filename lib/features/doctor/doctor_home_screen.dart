@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
+import '../../core/load_guard.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
 import '../../data/models/patient_case.dart';
@@ -44,7 +45,9 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       _error = null;
     });
     try {
-      final cases = await context.read<ClinicalRepository>().queue();
+      final cases = await LoadGuard.run(
+        context.read<ClinicalRepository>().queue(),
+      );
       if (!mounted) return;
       setState(() {
         _cases = cases;

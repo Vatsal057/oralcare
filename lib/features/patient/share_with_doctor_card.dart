@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/common.dart';
+import '../../core/load_guard.dart';
 import '../../data/models/doctor_summary.dart';
 import '../../data/repositories/assessment_repository.dart';
 import '../../data/repositories/doctor_directory_repository.dart';
@@ -57,7 +58,9 @@ class _ShareWithDoctorCardState extends State<ShareWithDoctorCard> {
       });
     }
     try {
-      final doctors = await context.read<DoctorDirectoryRepository>().all();
+      final doctors = await LoadGuard.run(
+        context.read<DoctorDirectoryRepository>().all(),
+      );
       if (!mounted) return;
       setState(() {
         _doctors = doctors;

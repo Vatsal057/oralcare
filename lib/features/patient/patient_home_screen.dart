@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/clinical_notices.dart';
+import '../../core/load_guard.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
 import '../../data/models/assessment_models.dart';
@@ -41,6 +42,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   int _currentTab = 0;
   List<RiskAssessmentRecord> _history = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -48,6 +50,12 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     _load();
   }
 
+  /// Loads the assessment history.
+  ///
+  /// Guarded because the unguarded version was the cause of a spinner that never
+  /// stopped: the read threw, the exception escaped, `_loading` stayed true and
+  /// the patient was left watching an animation. A spinner must always end in
+  /// content or a stated reason.
   Future<void> _load() async {
     final session = context.read<SessionController>();
     final repo = context.read<AssessmentRepository>();
@@ -57,12 +65,24 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
       return;
     }
 
-    final history = await repo.assessmentsForPatient(patientId);
-    if (!mounted) return;
-    setState(() {
-      _history = history;
-      _loading = false;
-    });
+    if (mounted) setState(() => _error = null);
+
+    try {
+      final history = await LoadGuard.run(
+        repo.assessmentsForPatient(patientId),
+      );
+      if (!mounted) return;
+      setState(() {
+        _history = history;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = LoadGuard.message(e, what: 'previous checks');
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _startAssessment() async {
@@ -487,7 +507,30 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                 const Center(child: CircularProgressIndicator()),
               ],
 
-              if (!_loading && _history.isEmpty) ...[
+              // Stated, with a way out. An error here used to be indistinguishable
+              // from an endless spinner.
+              if (!_loading && _error != null) ...[
+                const SizedBox(height: 24),
+                NoticeBanner(
+                  title: 'Could not load your previous checks',
+                  message: _error!,
+                  severity: NoticeSeverity.alert,
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() => _loading = true);
+                      _load();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try again'),
+                  ),
+                ),
+              ],
+
+              if (!_loading && _error == null && _history.isEmpty) ...[
                 const SizedBox(height: 24),
                 const NoticeBanner(
                   message:

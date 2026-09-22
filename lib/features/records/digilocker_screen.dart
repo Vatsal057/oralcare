@@ -5,7 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/common.dart';
+import '../../core/load_guard.dart';
 import '../../core/widgets/stored_document_image.dart';
+import '../../core/widgets/load_failure.dart';
 import '../../data/digilocker_file_store.dart';
 import '../../data/repositories/digilocker_repository.dart';
 import '../../domain/records/digilocker_models.dart';
@@ -21,6 +23,7 @@ class DigiLockerScreen extends StatefulWidget {
 class _DigiLockerScreenState extends State<DigiLockerScreen> {
   List<DigiLockerRecord> _records = [];
   bool _loading = true;
+  String? _error;
   DigiLockerCategory? _selectedCategory;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -42,12 +45,21 @@ class _DigiLockerScreenState extends State<DigiLockerScreen> {
     final repo = context.read<DigiLockerRepository>();
     final patientId = session.user?.patientId ?? 'guest';
 
-    final records = await repo.getRecordsForPatient(patientId);
-    if (!mounted) return;
-    setState(() {
-      _records = records;
-      _loading = false;
-    });
+    try {
+      final records = await LoadGuard.run(repo.getRecordsForPatient(patientId));
+      if (!mounted) return;
+      setState(() {
+        _records = records;
+        _error = null;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = LoadGuard.message(e, what: 'documents');
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _addRecordModal() async {
@@ -211,6 +223,16 @@ class _DigiLockerScreenState extends State<DigiLockerScreen> {
 
               if (_loading)
                 const Center(child: CircularProgressIndicator())
+              else if (_error != null)
+                LoadFailure(
+                  compact: true,
+                  title: 'Could not load your documents',
+                  message: _error!,
+                  onRetry: () {
+                    setState(() => _loading = true);
+                    _load();
+                  },
+                )
               else if (filtered.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(32),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/notifications/reminder_service.dart';
+import '../../core/load_guard.dart';
 import '../../core/widgets/common.dart';
 import '../../data/models/assessment_models.dart';
 import '../../data/repositories/appointment_repository.dart';
@@ -48,18 +50,43 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final assessments = context.read<AssessmentRepository>();
     final appointments = context.read<AppointmentRepository>();
 
-    final granted = _service.isReady ? true : await _service.initialise();
+    // Every await here is guarded independently, and each has a safe default.
+    // The notification plugin calls sat outside the try before, so a plugin that
+    // threw or never answered left the spinner turning on a screen whose whole
+    // job is to tell the patient plainly whether reminders are on.
+    var granted = false;
+    try {
+      granted = _service.isReady
+          ? true
+          : await LoadGuard.run(
+              _service.initialise(),
+              limit: const Duration(seconds: 8),
+            );
+    } catch (_) {
+      // Treated as "not permitted", which is what the screen already explains
+      // how to fix.
+    }
 
     List<RiskAssessmentRecord> followUps = const [];
     List<AppointmentRequest> visits = const [];
     try {
-      followUps = await assessments.pendingFollowUps(patientId);
-      visits = await appointments.listForPatient(patientId);
+      followUps = await LoadGuard.run(
+        assessments.pendingFollowUps(patientId),
+      );
+      visits = await LoadGuard.run(appointments.listForPatient(patientId));
     } catch (_) {
       // The reminder controls still work without the lists.
     }
 
-    final pending = await _service.pending();
+    var pending = const <PendingNotificationRequest>[];
+    try {
+      pending = await LoadGuard.run(
+        _service.pending(),
+        limit: const Duration(seconds: 8),
+      );
+    } catch (_) {
+      // Count shows as zero rather than blocking the screen.
+    }
 
     if (!mounted) return;
     setState(() {
