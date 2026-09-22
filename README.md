@@ -342,8 +342,10 @@ Read these before demonstrating the app:
 - **Family history and immunosuppression are recorded but unscored.** The
   CareConnect specification lists them without weights, and a test enforces that
   they do not move a patient's score until the clinical team agrees one.
-- **`assets/images/8.png` is missing**, so the new throat site shows a labelled
-  placeholder instead of an illustration.
+- **Illustrations are AI-generated.** All eight self-examination sites are
+  covered, but intraoral images should be checked for anatomical plausibility
+  (one midline uvula, symmetric tonsillar pillars, sensible tooth count) before
+  shipping, since they are the reference a patient compares themselves against.
 - **Guest mode is not persisted.** Nothing a guest enters is saved.
 
 ## Roadmap

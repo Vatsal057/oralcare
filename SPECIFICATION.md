@@ -266,7 +266,11 @@ IPO §2.3 lists ten; items 11–13 close the gap against CareConnect §3. In Kan
 
 Per site: two switches — *"I examined this site"* and, once examined, *"I found something abnormal"*. Marking abnormal forces examined to true. Each site carries an illustration (`assets/images/1.png`–`8.png`) and, when marked abnormal, a button into the clinical photo gallery for comparison.
 
-**Asset gap: `assets/images/8.png` (throat) does not exist.** The site renders a labelled placeholder — *"No illustration for Back of the throat yet. Follow the written instruction below."* It never substitutes another site's image, because showing the wrong anatomy is worse than showing none.
+**All eight sites now carry an illustration.** `assets/images/8.png` (back of the throat) was added after clinical review; it is an intraoral oropharyngeal view matching the style of the palate image, showing a single midline uvula, symmetric tonsillar pillars, the palatine tonsils and the posterior pharyngeal wall, with healthy mucosa throughout.
+
+The fallback behaviour is retained for any site added in future: `_imageForSite` returns null rather than a default, and the card renders a labelled placeholder — *"No illustration for &lt;site&gt; yet. Follow the written instruction below."* It never substitutes another site's image, because showing the wrong anatomy is worse than showing none.
+
+The illustrations are AI-generated, which removes any stock-photography licensing question but introduces a different one: image models are unreliable on mouth anatomy. Each intraoral image should be checked for a single midline uvula, symmetric tonsillar pillars, plausible tooth count and uniformly healthy mucosa before it ships, because these pictures are the reference a patient compares their own mouth against — a malformed one could make a normal mouth look abnormal, or the reverse.
 
 **Illustration cropping — fixed at clinical review.** The illustrations were being cut off, reported twice by the reviewing clinician. Two independent causes:
 
@@ -1042,7 +1046,7 @@ These cannot both be right. The threshold appears in the engine, the follow-up p
 
 | Asset | For | Status |
 |---|---|---|
-| `assets/images/8.png` | Self-examination site: back of the throat | **Missing** — placeholder shown |
+| ~~`assets/images/8.png`~~ | Self-examination site: back of the throat | **Added** — see §4.6 |
 | Red patch alone | Sign reference | Suggested addition |
 | Swelling of mouth or jaw | Sign reference (Questionnaire §3.5) | Suggested addition |
 | Pus / boil | Sign reference (Questionnaire §3.7) | Suggested addition |
