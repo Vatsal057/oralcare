@@ -1129,6 +1129,13 @@ flutter build web -t lib/main.dart
 firebase deploy --only firestore:rules,hosting --project oral-cancer-pilot-1027-dc3a3
 ```
 
+Regenerate this document as a PDF after editing it:
+
+```bash
+python3 -m pip install markdown      # once
+python3 tools/make_spec_pdf.py       # writes SPECIFICATION.pdf
+```
+
 Provisioning tools (require a service-account key):
 
 ```bash
