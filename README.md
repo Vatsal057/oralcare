@@ -342,10 +342,15 @@ Read these before demonstrating the app:
 - **Family history and immunosuppression are recorded but unscored.** The
   CareConnect specification lists them without weights, and a test enforces that
   they do not move a patient's score until the clinical team agrees one.
-- **Illustrations are AI-generated.** All eight self-examination sites are
-  covered, but intraoral images should be checked for anatomical plausibility
-  (one midline uvula, symmetric tonsillar pillars, sensible tooth count) before
-  shipping, since they are the reference a patient compares themselves against.
+- **Illustrations are AI-generated.** 41 images cover the eight self-examination
+  sites, a 13-entry clinical reference gallery, seven rehabilitation exercises,
+  seven education topics, five habit questions and a mouth map. Intraoral images
+  should be checked for anatomical plausibility (one midline uvula, symmetric
+  tonsillar pillars, sensible tooth count) before shipping, since they are the
+  reference a patient compares themselves against.
+- **`sign_jaw_swelling.jpg` is weak** — the facial asymmetry it is meant to show
+  is barely visible, so it teaches the wrong threshold. Queued for regeneration;
+  replacing the file needs no code change.
 - **Guest mode is not persisted.** Nothing a guest enters is saved.
 
 ## Roadmap

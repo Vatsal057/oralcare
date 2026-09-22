@@ -22,9 +22,13 @@ void main() {
       }
     });
 
-    test('every declared image is a png', () {
+    /// JPEG, not PNG. As PNGs the 41 illustrations came to 83 MB, which is not
+    /// installable over a rural connection; at quality 88 and 1200 px the same
+    /// set is 11 MB, with the velvety texture of the erythroplakia image and the
+    /// flat edges of the mouth diagram both verified to survive the conversion.
+    test('every declared image is a jpg', () {
       for (final path in AppImages.all) {
-        expect(path, endsWith('.png'), reason: path);
+        expect(path, endsWith('.jpg'), reason: path);
       }
     });
 
