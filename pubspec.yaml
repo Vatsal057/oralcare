@@ -42,7 +42,7 @@ dependencies:
   firebase_core: ^4.14.0
   firebase_auth: ^6.6.1
   cloud_firestore: ^6.9.0
-  google_fonts: ^8.2.1
+  google_fonts: ^9.0.0
   # Scheduled reminders (Section I). Android only: the plugin has no web
   # implementation, so every call is guarded by a platform check.
   flutter_local_notifications: ^19.4.2
