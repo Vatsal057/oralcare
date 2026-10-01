@@ -45,7 +45,7 @@ dependencies:
   google_fonts: ^8.2.1
   # Scheduled reminders (Section I). Android only: the plugin has no web
   # implementation, so every call is guarded by a platform check.
-  flutter_local_notifications: ^19.4.2
+  flutter_local_notifications: ^20.1.0
   timezone: ^0.10.1
 
 dev_dependencies:
